@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<!DOCTYPE modification SYSTEM "http://www.simplemachines.org/xml/modification">
+<modification xmlns="http://www.simplemachines.org/xml/modification" xmlns:smf="http://www.simplemachines.org/">
+	<id>temar:TEA</id>
+	<version>1.1.2</version>
+
+	<file name="$sourcedir/Profile-Modify.php">
+
+		<operation>
+			<search position="replace"><![CDATA[			'type' => !empty($modSettings['allow_editDisplayName']) || allowedTo('moderate_forum') ? 'text' : 'label',
+			'label' => $txt['name'],
+			'subtext' => $txt['display_name_desc'],]]></search>
+			<add><![CDATA[			'type' => !empty($modSettings['tea_usecharname']) ? 'select' : (!empty($modSettings['allow_editDisplayName']) || allowedTo('moderate_forum') ? 'text' : 'label'),
+			'label' => $txt['name'],
+			'subtext' => $txt['display_name_desc'],
+			'options' => 'Global $tea; if($modSettings["tea_custom_name"]) $format = TRUE; return $tea -> get_char_list(FALSE, $format);',]]></add>
+		</operation>
+		<operation>
+			<search position="replace"><![CDATA[	// Here's where we sort out all the 'other' values...]]></search>
+			<add><![CDATA[	global $tea, $teats, $teaj;
+	if($_GET['area'] == 'tea' && $_GET['sa'] == 'ts')
+	{
+		$teats -> tea_set_ts($memID);
+		redirectexit('action=profile;area=tea;sa=ts;updated;u='.$memID);
+	}
+	elseif($_GET['sa'] == 'jabber')
+	{
+		$teaj -> tea_set_jabber($memID);
+		redirectexit('action=profile;area=tea;sa=jabber;updated;u='.$memID);
+	}
+	elseif($_GET['area'] == 'tea')
+	{
+		$tea -> tea_set_api($memID);
+	}
+
+	// Here's where we sort out all the 'other' values...]]></add>
+		</operation>
+		<operation>
+			<search position="replace"><![CDATA[	elseif (($value == 'upload' && allowedTo('profile_upload_avatar')) || $downloadedExternalAvatar)]]></search>
+			<add><![CDATA[	elseif($value == 'tea')
+	{
+		Global $tea;
+		$tea -> avatar_save($memID, $profile_vars, $cur_profile);
+	}
+	elseif (($value == 'upload' && allowedTo('profile_upload_avatar')) || $downloadedExternalAvatar)]]></add>
+		</operation>
+	</file>
+
+</modification>

@@ -1,0 +1,90 @@
+----------------------
+Version 1.2.1 -> 1.3.0 (dev)
+----------------------
+New Features
+- Jabber Registration
+- Added Important Upgrade Notes to info page
+- Support for new API system, Stop old getting added but still supports current stored
+
+Bug Fixes
+- 
+
+----------------------
+Version 1.2.0 -> 1.2.1
+----------------------
+New Features
+- EVE Avatar size is now selectable under administrator settings
+- Full member Check now limits to 50 per run and cycles, Cron has built in time manager
+- TS Section now works with API area disabled (good for none eve use)
+- Online reg Method for TS now removes old Accounts
+- You can now Alter permissions for viewing and editing API Page
+- Full Check now runs with a limit of 25 Seconds, and auto Refreshes if Manual
+- You can now Get an Update by Clicking Download under TEA Admin info page
+- Added Custom Format for adding tags to Name or title
+- Main Character now Auto Selects when adding first API under profile
+
+Bug Fixes
+- Fixed Bug with Character Selection on Profile Were if you had no API then you couldnt add 1 (Fix by monorailpilot)
+- Added a command during install of package to chmod the xmlhttp file
+- Fixed undefined errors due to missing skills in TEA_SkillDump.php
+- Added excape for Javascript variable for when people use ' in rule names
+- Fixed Error where actual user groups was used and not selected user for TS reg
+- Fixed issue with overlapping copyright
+- Fixed but were main character selection under TS always used default format
+- Fixed a bunch of undefined errors including the one in crons
+- Name to Reg and Check in TS is now Shortened to 30 if longer
+- Removed Corp Description as some can Break XML
+- Fixed a bug causing error when no titles found
+- Fixed issue with tea function being called in other areas of profile
+
+----------------------
+Version 1.1.2 -> 1.2.0
+----------------------
+New Features
+- TeamSpeak 3 Support, This includes Registering via User uniqueKey or being on the server and having it find you
+  Also Maintains users Access, will smf and Ts group linking, and can enforce nicknames
+- Added Setting of a Main Character and Improved the Realname and Avatar Setting Options
+- Added TEA to profile dropdown menu
+
+Bug Fixes
+- Fixed bug that showed full forum page instead of character list when registering
+
+----------------------
+Version 1.1.1 -> 1.1.2
+----------------------
+New Features
+- Now Supports Sockets to get data from eveonline if curl not installed
+
+Bug Fixes
+- Run Table Check on Upgrade
+- Removed use of split() function as its deprecated
+- Fixed Avatar to new address
+- Fixed check for esam upgrade
+- Added a check for open_basedir and safe_mode when using CURLOPT_FOLLOWLOCATION
+- Fixed check for existing cache functions
+- Removed a bunch of undefined errors
+- Fixed bug were charid wasnt saved under settings
+- Fixed Standing to New type (contacts)
+- No Longer caching standing and alliance list in Database as they can be too large, and they are already cached in a file
+
+----------------------
+Version 1.1.0 -> 1.1.1
+----------------------
+New Features
+- Added Check that Character is Selected if Api is Entered during registration
+- Added xml Cache
+- Added Option to Lock Avatars to Eve Characters Only
+- Added Ability to reorder Rules
+- You can now pull Characters under Settings Page with out the need to save
+- Corp Name and Alliance Name can be used in rules and it gets ID for you
+- New Condition (Valid API) true for all valid API's
+- Added the ability to do rules that are iver is or isnt
+- Added Proxy Support (alternative API Server)
+
+Bug Fixes
+- Fixed a Bug with registration when charname has an apostrophe in it
+- Changed Cron file to use Relitive path from File to get SSI.php
+- Corp / Alliance ID under Setting is no Longer used and has been Replaced by Rules
+- Additional groups no longer removed by api error caused by CCP server being down
+- Fixed issue with username that are numeric
+- Fixed Skill Check when % isnt used

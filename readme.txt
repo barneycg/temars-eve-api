@@ -1,0 +1,1 @@
+This mod will add EVE Api linking and managing. They will be configurable in "Features and options". You can make people fill in there API when they sign up and they can change it under profile, they can be auto assigned a group based on there API info

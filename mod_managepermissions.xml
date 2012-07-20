@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!DOCTYPE modification SYSTEM "http://www.simplemachines.org/xml/modification">
+<modification xmlns="http://www.simplemachines.org/xml/modification" xmlns:smf="http://www.simplemachines.org/">
+	<id>temar:TEA</id>
+	<version>1.00</version>
+
+	<file name="$sourcedir/ManagePermissions.php">
+
+		<operation>
+			<search position="replace"><![CDATA[			'profile_remote_avatar' => array(false, 'profile', 'use_avatar'),]]></search>
+			<add><![CDATA[			'profile_remote_avatar' => array(false, 'profile', 'use_avatar'),
+			'tea_view' => array(true, 'profile', 'view_basic_info'),
+			'tea_edit' => array(true, 'profile', 'edit_profile'),]]></add>
+		</operation>
+	</file>
+
+</modification>

@@ -1,0 +1,47 @@
+K 25
+svn:wc:ra_dav:version-url
+V 40
+/svn/!svn/ver/95/trunk/TS3_Class/Adapter
+END
+TSDNS.php
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/95/trunk/TS3_Class/Adapter/TSDNS.php
+END
+ServerQuery.php
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/!svn/ver/95/trunk/TS3_Class/Adapter/ServerQuery.php
+END
+Exception.php
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/!svn/ver/95/trunk/TS3_Class/Adapter/Exception.php
+END
+Update.php
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn/!svn/ver/95/trunk/TS3_Class/Adapter/Update.php
+END
+Abstract.php
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/!svn/ver/95/trunk/TS3_Class/Adapter/Abstract.php
+END
+FileTransfer.php
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/95/trunk/TS3_Class/Adapter/FileTransfer.php
+END
+Blacklist.php
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/!svn/ver/95/trunk/TS3_Class/Adapter/Blacklist.php
+END

@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/95/trunk/TS3_Class/Adapter/ServerQuery
+END
+Reply.php
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/95/trunk/TS3_Class/Adapter/ServerQuery/Reply.php
+END
+Exception.php
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/!svn/ver/95/trunk/TS3_Class/Adapter/ServerQuery/Exception.php
+END
+Event.php
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/95/trunk/TS3_Class/Adapter/ServerQuery/Event.php
+END

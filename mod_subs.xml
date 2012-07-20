@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<!DOCTYPE modification SYSTEM "http://www.simplemachines.org/xml/modification">
+<modification xmlns="http://www.simplemachines.org/xml/modification" xmlns:smf="http://www.simplemachines.org/">
+	<id>temar:TEA</id>
+	<version>1.1.2</version>
+
+	<file name="$sourcedir/Subs.php">
+
+		<operation>
+			<search position="replace"><![CDATA[function setupMenuContext()
+{
+	global $context, $modSettings, $user_info, $txt, $scripturl;
+]]></search>
+			<add><![CDATA[function setupMenuContext()
+{
+	global $context, $modSettings, $user_info, $txt, $scripturl;
+
+	loadLanguage('TEA');
+]]></add>
+		</operation>
+		<operation>
+			<search position="replace"><![CDATA[				),
+			),
+			'pm' => array(
+				'title' => $txt['pm_short'],
+				'href' => $scripturl . '?action=pm',
+				'show' => $context['allow_pm'],
+]]></search>
+			<add><![CDATA[					'tea' => array(
+						'title' => $txt['tea_tea'],
+						'href' => $scripturl . '?action=profile;area=tea',
+						'show' => true,
+					),
+				),
+			),
+			'pm' => array(
+				'title' => $txt['pm_short'],
+				'href' => $scripturl . '?action=pm',
+				'show' => $context['allow_pm'],
+]]></add>
+		</operation>
+	</file>
+
+</modification>
