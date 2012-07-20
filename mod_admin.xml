@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<!DOCTYPE modification SYSTEM "http://www.simplemachines.org/xml/modification">
+<modification xmlns="http://www.simplemachines.org/xml/modification" xmlns:smf="http://www.simplemachines.org/">
+	<id>temar:TEA</id>
+	<version>1.00</version>
+
+	<file name="$sourcedir/Admin.php">
+
+		<operation>
+			<search position="replace"><![CDATA[			),
+		),
+		'layout' => array(
+			'title' => $txt['layout_controls'],]]></search>
+			<add><![CDATA[				'tea' => array(
+					'label' => $txt['tea_tea'],
+					'file' => 'TEA.php',
+					'function' => 'ModifyTEASettings',
+					'icon' => 'tea.gif',
+					'subsections' => array(
+						'info' => array($txt['tea_info']),
+						'settings' => array($txt['settings']),
+						'rules' => array($txt['tea_rules']),
+						'ts' => array($txt['tea_ts']),
+						'jabber' => array($txt['tea_jabber']),
+						'checks' => array($txt['tea_checks']),
+					),
+				),
+			),
+		),
+		'layout' => array(
+			'title' => $txt['layout_controls'],]]></add>
+		</operation>
+	</file>
+
+</modification>

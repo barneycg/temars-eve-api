@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<!DOCTYPE modification SYSTEM "http://www.simplemachines.org/xml/modification">
+<modification xmlns="http://www.simplemachines.org/xml/modification" xmlns:smf="http://www.simplemachines.org/">
+	<id>temar:TEA</id>
+	<version>1.00</version>
+	<file name="$boarddir/index.php">
+		<operation>
+			<search position="replace"><![CDATA[	// Is the forum in maintenance mode? (doesn't apply to administrators.)]]></search>
+			<add><![CDATA[	require_once($sourcedir.'/TEA.php');
+
+	// Is the forum in maintenance mode? (doesn't apply to administrators.)]]></add>
+		</operation>
+	</file>
+</modification>

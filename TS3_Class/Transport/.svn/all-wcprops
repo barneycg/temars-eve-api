@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 42
+/svn/!svn/ver/95/trunk/TS3_Class/Transport
+END
+Exception.php
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/!svn/ver/95/trunk/TS3_Class/Transport/Exception.php
+END
+Abstract.php
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/95/trunk/TS3_Class/Transport/Abstract.php
+END
+TCP.php
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/95/trunk/TS3_Class/Transport/TCP.php
+END
+UDP.php
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/95/trunk/TS3_Class/Transport/UDP.php
+END

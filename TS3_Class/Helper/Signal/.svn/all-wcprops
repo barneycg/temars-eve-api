@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/95/trunk/TS3_Class/Helper/Signal
+END
+Handler.php
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/95/trunk/TS3_Class/Helper/Signal/Handler.php
+END
+Exception.php
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/95/trunk/TS3_Class/Helper/Signal/Exception.php
+END
+Interface.php
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/95/trunk/TS3_Class/Helper/Signal/Interface.php
+END

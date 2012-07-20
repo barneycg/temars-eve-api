@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<!DOCTYPE modification SYSTEM "http://www.simplemachines.org/xml/modification">
+<modification xmlns="http://www.simplemachines.org/xml/modification" xmlns:smf="http://www.simplemachines.org/">
+	<id>temar:TEA</id>
+	<version>1.00</version>
+
+	<file name="$sourcedir/Register.php">
+
+		<operation>
+			<search position="replace"><![CDATA[	// Lets check for other errors before trying to register the member.]]></search>
+			<add><![CDATA[	global $tea;
+	$error = $tea -> reg_checks();
+	if(!empty($error)) //error
+		$reg_errors[] = $error;
+
+	// Lets check for other errors before trying to register the member.]]></add>
+		</operation>
+		<operation>
+			<search position="replace"><![CDATA[	$memberID = registerMember($regOptions, true);]]></search>
+			<add><![CDATA[	$memberID = registerMember($regOptions, true);
+
+	$tea -> tea_set_api($memberID, true);]]></add>
+		</operation>
+
+	</file>
+
+</modification>

@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!DOCTYPE modification SYSTEM "http://www.simplemachines.org/xml/modification">
+<modification xmlns="http://www.simplemachines.org/xml/modification" xmlns:smf="http://www.simplemachines.org/">
+	<id>temar:TEA</id>
+	<version>1.00</version>
+
+	<file name="$themedir/Register.template.php">
+
+		<operation>
+			<search position="replace"><![CDATA[	// If OpenID is enabled, give the user a choice between password and OpenID.]]></search>
+			<add><![CDATA[
+	global $tea;
+	$tea -> RegistrationFields();
+
+	// If OpenID is enabled, give the user a choice between password and OpenID.]]></add>
+		</operation>
+
+	</file>
+</modification>
