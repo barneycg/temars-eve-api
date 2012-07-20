@@ -1,5 +1,6 @@
 <?php
 $txt['tea_tea'] = 'Temars Eve Api';
+$txt['tea'] = 'Temars Eve Api';
 $txt['tea_eveapi'] = 'Eve Api';
 $txt['tea_userid'] = 'ID from API Page <A href="https://support.eveonline.com/api/Key">here</a>';
 $txt['tea_api'] = 'Verification Code from API Page <A href="https://support.eveonline.com/api/Key">here</a>';
@@ -126,6 +127,7 @@ $txt['tea_rulesinfo'] = '* Rules for Main Group are checked in Order of ID
 
 //Jabber Profile
 $txt['tea_jabber_userinfo'] = 'This section allows you to Gain Access to Jabber';
+$txt['tea_jabber_description'] = 'This section allows you to Gain Access to Jabber';
 $txt['tea_jabber_disabled'] = 'Temars Eve Api Mod Jabber Area is Disabled.';
 
 $txt['tea_groupmon'] = 'Groups to Monitor and Remove';

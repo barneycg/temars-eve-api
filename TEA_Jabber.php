@@ -255,6 +255,7 @@ function move(id, value)
 	subform(value, id);
 }
 </script>';
+			if (array_key_exists('minitype',$_POST)){
 			if($_POST['minitype'] == 'delrule')
 			{
 				if(!is_numeric($_POST['value']))
@@ -298,6 +299,7 @@ function move(id, value)
 				}
 				redirectexit('action=admin;area=tea;sa=jabber');
 			}
+			}
 			if(isset($_POST['group']))
 			{
 				$this -> tea -> query("DELETE FROM {db_prefix}tea_jabber_groups");
@@ -328,7 +330,7 @@ function move(id, value)
 				}
 			}
 			unset($config_vars[100], $config_vars[101], $config_vars[102], $config_vars[103]);
-			$config_vars[] = array('select', 'tea_charid', $charlist);
+			//$config_vars[] = array('select', 'tea_charid', $charlist);
 			$config_vars[] = array('text', 'tea_jabber_info');
 			saveDBSettings($config_vars);
 			redirectexit('action=admin;area=tea;sa=jabber');
@@ -346,6 +348,7 @@ function move(id, value)
 
 	function tea_set_jabber($memberID, $reg=FALSE)
 	{
+		$error = FALSE;
 		if(!$this -> modSettings["tea_enable"] || !$this -> modSettings["tea_jabber_enable"])
 			Return;
 
@@ -552,8 +555,69 @@ function move(id, value)
 	{
 		$this -> online_users();
 	}
-
+	
 	function all_users()
+	{
+		unset ($jusers);
+		unset ($rules);
+		$jusers = $this -> smcFunc['db_query']('', "SELECT id, username, name FROM {db_prefix}tea_jabber_users");
+		$jusers = $this -> tea -> select($jusers);
+		
+		$rules = $this -> smcFunc['db_query']('', "SELECT id, smf, jabber, nf FROM {db_prefix}tea_jabber_rules");
+		$rules = $this -> tea -> select($rules);
+		
+		
+		foreach ($jusers as $u)
+		{
+			unset ($usergroupssql);
+			unset ($usergroups);
+			unset ($jabbergs);
+			$memberID=$u[0];
+			$name = $u[1];
+			$nick = $this -> format_jabber_name($memberID, $u[2], FALSE, FALSE);
+			$usergroupssql = $this -> smcFunc['db_query']('', "SELECT id_group, additional_groups, email_address FROM {db_prefix}members WHERE id_member = ".$memberID);
+			$usergroupssql = $this -> tea -> select($usergroupssql);
+
+			if(!empty($usergroupssql))
+			{
+				$email = $usergroupssql[0][2];
+				$usergroups[$usergroupssql[0][0]] = true;
+				if(!empty($usergroupssql[0][1]))
+				{
+					$usergroupssql[0][1] = explode(",", $usergroupssql[0][1]);
+					foreach($usergroupssql[0][1] as $g)
+					{
+						$usergroups[$g] = true;
+					}
+				}
+			}
+			if(!empty($rules))
+			{
+				foreach($rules as $r)
+				{
+					if(isset($usergroups[$r[1]]))
+					{
+						$jabbergs[$r[2]] = $r[2];
+					}
+				}
+			}
+
+			//var_dump($jabbergs);
+		        if(!empty($jabbergs))
+                	{
+				$this -> db -> update_user($name, FALSE, $nick, $email, $jabbergs);
+			}
+			else
+			{
+				$this -> db -> del_user($name);
+                                $this -> tea -> query("DELETE FROM {db_prefix}tea_jabber_users WHERE username = '".$name."'");
+				echo "Removing : ".$name."\n";
+			}
+		}
+	}
+		
+
+	function all_users_old()
 	{
 		require_once($this -> sourcedir . '/TS3_Class/TeamSpeak3.php');
 
@@ -733,6 +797,7 @@ function move(id, value)
 
 	function format_jabber_name($memID, $char, $username = true, $nospace = true)
 	{
+		$name='';
 		$chars = $this -> tea -> get_all_chars($memID);
 
 		$smfgroups = $this -> tea -> smf_groups($memID);
@@ -753,7 +818,7 @@ function move(id, value)
 								if($r[1] == $g)
 								{
 									if(!isset($nf))
-										$nf = $r[4];
+										$nf = $r[3];
 								}
 							}
 						}
@@ -767,7 +832,7 @@ function move(id, value)
 			}
 			if(!empty($charinfo))
 			{
-				if($nf)
+				if(isset($nf))
 					$name = $nf;
 				else
 				{
@@ -785,8 +850,10 @@ function move(id, value)
 	//	{
 	//		$name = substr($name, 0, 30);
 	//	}
+		
 		if($nospace)
 			$name = str_replace(" ", "_", $name);
+		$name = str_replace("'","_", $name);
 		if($username)
 			$name = strtolower($name);
 		return $name;
@@ -847,6 +914,7 @@ function template_edit_tea_jabber()
 			else
 			{
 				echo '<tr><td>Not Registered on Jabber</td></tr>';
+				$sname='';
 			}
 			echo '<tr><td colspan="2"><hr></td></tr>';
 		//	if(isset($modSettings["tea_jabber_method_online"]) && $modSettings["tea_jabber_method_online"])
