@@ -80,6 +80,7 @@ class TEA_Jabber_DB extends TEAC
 	}
 	function get_groups()
 	{
+		$ret='';
 		$this -> db_connect();
 		$list = $this -> select("SELECT groupName from ofGroup");
 		if(!empty($list))
@@ -94,6 +95,7 @@ class TEA_Jabber_DB extends TEAC
 
 	function get_user_groups($name)
 	{
+		$ret='';
 		$this -> db_connect();
 		$list = $this -> select("SELECT groupName from ofGroupUser WHERE username = '".mysql_real_escape_string($name)."'");
 		if(!empty($list))
@@ -163,6 +165,8 @@ class TEA_Jabber_DB extends TEAC
 		$uname = str_replace(" ", "_", $uname);
 		if($pw)
 			$pws = '&password='.$pw;
+		else
+			$pws='';
 
 		$url = $this -> modSettings['tea_jabber_admin_url'].'/plugins/userService/userservice?type=update&secret='.$secret.'&username='.$uname.$pws.'&name='.$name.'&email='.$email.'&groups='.$groups;
 		$url = str_replace(" ", "%20", $url);

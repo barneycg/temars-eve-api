@@ -35,6 +35,7 @@ class TEAC
 		if(empty($this -> newc))
 			$this -> newc = new TEACN;
 		$this -> newc -> atags = $this -> atags;
+		#return TEACN::corp_info($corp);
 		return $this -> newc -> corp_info($corp);
 	}
 
@@ -45,14 +46,26 @@ class TEAC
 
 	function get_api_characters($userid, $api)
 	{
-		$check = $this -> is_new($userid, $api);
-		if($check)
-			$class = $this -> newc;
-		else
-			$class = $this -> oldc;
-		$class -> atags = $this -> atags;
-		$chars = $class -> get_api_characters($userid, $api);
-		$this -> data = $class -> data;
+		$chars=array();
+		if(!empty($userid))
+		{
+			$check = $this -> is_new($userid, $api);
+			if($check)
+				$class = $this -> newc;
+			else
+				$class = $this -> oldc;
+			//var_dump($this->atags);
+			if (!empty($this->atags))
+			{
+				$class -> atags = $this -> atags;
+			}
+			else
+			{
+				$class -> atags = array();
+			}
+			$chars = $class -> get_api_characters($userid, $api);
+			$this -> data = $class -> data;
+		}
 		return $chars;
 	}
 
@@ -122,6 +135,10 @@ class TEAC
 			$this -> newc = new TEACN;
 			$this -> oldc = new TEACO;
 		}
+		if(empty($this -> oldc))
+		{	
+			$this -> oldc = new TEACO;
+		}
 		if(isset($this -> newold[$keyid]))
 		{
 			if($this -> newold[$keyid] == "old")
@@ -179,13 +196,14 @@ class TEACN
 
 		if(!empty($post))
 		{
+			
 			foreach($post as $i => $v)
 			{
 				$post[$i] = $i.'='.$v;
 			}
 			$post = implode('&', $post);
 		}
-
+		
 		$cache = FALSE;
 		if($type != 'standings' && $type != 'alliances' && method_exists($this, 'get_cache'))
 		{
@@ -195,7 +213,7 @@ class TEACN
 			return $cache;
 
 		$xml = $this -> get_site($this -> server.$url, $post);
-
+		
 		if($type != 'standings' && $type != 'alliances' && method_exists($this, 'set_cache'))
 		{
 			$cache = $this -> set_cache($url, $post, $xml);
@@ -511,13 +529,17 @@ class TEACN
 
 	function titles($id, $api, $charid)
 	{
+		$titles='';
 		$post = array('keyID' => $id, 'vCode' => $api, 'characterID' => $charid);
 		$xml = $this -> get_xml('charsheet', $post);
-	//	$xml = file_get_contents('me.xml');
+			//	$xml = file_get_contents('me.xml');
 		$xml = new SimpleXMLElement($xml);
-		foreach($xml -> result -> rowset[6] as $title)
+		if (!empty($xml -> result -> rowset[6]))
 		{
-			$titles[strtolower((string)$title["titleName"])] = TRUE;
+			foreach($xml -> result -> rowset[6] as $title)
+			{
+				$titles[strtolower((string)$title["titleName"])] = TRUE;
+			}
 		}
 		return $titles;
 	}
@@ -534,10 +556,31 @@ class TEACN
 	function get_error($data)
 	{
 		$data = explode('<error code="', $data, 2);
-		$data = explode('">', $data[1], 2);
-		$id = $data[0];
-		$data = explode('</error>', $data[1], 2);
-		$msg = $data[0];
+		if (array_key_exists(1,$data))
+		{
+			$data = explode('">', $data[1], 2);
+			if (array_key_exists(0,$data))
+			{
+				$id = $data[0];
+			}
+			else $id = 'no error code';
+			if (array_key_exists(1,$data))
+			{
+				$data = explode('</error>', $data[1], 2);
+				if (array_key_exists(0,$data))
+				{
+					$msg = $data[0];
+				}
+				else $msg = 'no error message';
+			}
+			else $msg = 'no error message';
+		}
+		else
+		{
+			$id = 'no error code';
+			$msg = 'no error message';
+		}
+		
 		Return(array($id, $msg));
 	}
 
@@ -944,9 +987,12 @@ class TEACO
 		$xml = $this -> get_xml('charsheet', $post);
 	//	$xml = file_get_contents('me.xml');
 		$xml = new SimpleXMLElement($xml);
-		foreach($xml -> result -> rowset[6] as $title)
+		if(!empty($xml -> result -> rowset[6]))
 		{
-			$titles[strtolower((string)$title["titleName"])] = TRUE;
+			foreach($xml -> result -> rowset[6] as $title)
+			{
+				$titles[strtolower((string)$title["titleName"])] = TRUE;
+			}
 		}
 		return $titles;
 	}
