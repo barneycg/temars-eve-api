@@ -387,6 +387,7 @@ class TEACN
 			$info['corpname'] = (string)$xml -> result -> corporationName;
 			$info['ticker'] = (string)$xml -> result -> ticker;
 			$info['allianceid'] = (string)$xml -> result -> allianceID;
+			$info['ceoid'] = (string)$xml -> result -> ceoID;
 			if(empty($info['allianceid']) || $info['allianceid'] == '')
 				$info['allianceid'] = 0;
 			$info['alliance'] = (string)$xml -> result -> allianceName;
