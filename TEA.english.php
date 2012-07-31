@@ -116,6 +116,7 @@ $txt['tea_skill'] = 'Skill';
 $txt['tea_role'] = 'Role';
 $txt['tea_title'] = 'Title';
 $txt['tea_militia'] = 'Militia';
+$txt['tea_ceo'] = 'Corp CEO';
 
 $txt['tea_cantfindcorp'] = 'Unable to find Corp with name: ';
 $txt['tea_cantfindalliance'] = 'Unable to find Alliance with name: ';

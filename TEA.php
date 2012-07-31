@@ -633,6 +633,23 @@ class TEA extends TEAC
 											//	$this -> chars[] = $char;
 												Switch($cond[0])
 												{
+													case 'ceo':
+														if ($cond[3] == 'is' && $char['allianceid'] == $cond[1])
+														{
+															$corpd = $this -> corp_info($char['corpid']);
+															$ceoid = $corpd['ceoid'];
+															if ($char['charid'] == $ceoid)
+															{
+																Break 2;
+															}
+															Break;
+														}
+														else
+														{
+															$amatch = FALSE;
+															Break 2;
+														}	
+														
 													case 'corp':
 														if($cond[3] == 'is' && $char['corpid'] == $cond[1])
 														{
@@ -1572,6 +1589,8 @@ class TEA extends TEAC
 		$types['role'] = $this -> txt['tea_role'];
 		$types['title'] = $this -> txt['tea_title'];
 		$types['militia'] = $this -> txt['tea_militia'];
+		$types['ceo'] = $this -> txt['tea_ceo'];
+		
 		$groups = $this -> MemberGroups();
 		if(!empty($_POST))
 		{
@@ -1734,7 +1753,7 @@ class TEA extends TEAC
 				else
 					$isisnt = 'is';
 
-				if($type == "corp" || $type == "alliance")
+				if($type == "corp" || $type == "alliance" || $type == "ceo")
 				{
 					$value = $_POST['value'];
 					if(!is_numeric($value))
