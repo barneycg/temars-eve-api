@@ -79,7 +79,7 @@ class TEA extends TEAC
 				if($g == 1)
 					$v = 0;
 				else
-					$v = 1;
+					$v = 0;
 			   // Give them all their new permission.
 				$request = $this -> smcFunc['db_query']('', "
 					INSERT IGNORE INTO {db_prefix}permissions
@@ -100,7 +100,7 @@ class TEA extends TEAC
 			}
 		}
 
-		$dsets['tea_api_server'] = 'http://api.eve-online.com';
+		$dsets['tea_api_server'] = 'https://api.eveonline.com';
 		$dsets['tea_lastpull'] = 0;
 		$dsets['tea_nf'] = '[#ct#] #name#';
 		$dsets['tea_tf'] = '#ct#';
@@ -226,7 +226,8 @@ class TEA extends TEAC
 		$cr['main'] = '';
 		$cr['additional'] = '';
 		$ignore = FALSE;
-
+		$error = FALSE;
+		
 		$cgq = $this -> smcFunc['db_query']('', "SELECT id, main, additional FROM {db_prefix}tea_groups ORDER BY id");
 		$cgq = $this -> select($cgq);
 		if(!empty($cgq))
@@ -287,7 +288,7 @@ class TEA extends TEAC
 					
 					$post = array('keyID' => $apiuser, 'vCode' => $apikey);
 					$accnt = $this -> get_xml('keyinfo', $post);
-					
+
 					$this -> data = $accnt;
 					if(stristr($accnt, "error"))
 					{
@@ -642,6 +643,7 @@ class TEA extends TEAC
 															{
 																Break 2;
 															}
+															$amatch = FALSE;
 															Break;
 														}
 														else
@@ -903,16 +905,17 @@ class TEA extends TEAC
 						//var_dump($apiuser);
 						$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = '9999', error = 'Missing API', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
 					}
-				}
-				if(!$mainmatch && !$ignore)
-				{
-					// doesnt match any rule, remove group
-					$this -> query("UPDATE {db_prefix}members SET ID_GROUP = 0 WHERE ID_MEMBER = {int:id}",
-					array('id' => $id));
-					if(!$error)
-						$this -> query("UPDATE {db_prefix}tea_api SET status = 'nomatch', status_change = {int:time} WHERE ID_MEMBER = {int:id} AND status = 'OK'",
-						array('time' => time(), 'id' => $id));
-					$cr['main'] = $txt['tea_nomatch'];
+				
+					if(!$mainmatch && !$ignore)
+					{
+						// doesnt match any rule, remove group
+						$this -> query("UPDATE {db_prefix}members SET ID_GROUP = 0 WHERE ID_MEMBER = {int:id}",
+						array('id' => $id));
+						if(!$error)
+							$this -> query("UPDATE {db_prefix}tea_api SET status = 'nomatch', status_change = {int:time} WHERE ID_MEMBER = {int:id} AND status = 'OK'",
+							array('time' => time(), 'id' => $id));
+						$cr['main'] = $txt['tea_nomatch'];
+					}
 				}
 			}
 			else
@@ -1032,8 +1035,10 @@ class TEA extends TEAC
 			foreach($user as $acc)
 			{
 				$chars = $this -> get_acc_chars($acc[0]);
-				foreach($chars as $i => $c)
-					$all[$i] = $c;
+				if(!empty($chars)){
+					foreach($chars as $i => $c)
+						$all[$i] = $c;
+				}
 			}
 		}
 		else 
@@ -2143,7 +2148,7 @@ function value_type(fromedit)
 		document.getElementById(\'tea_valuetxt\').innerHTML="Corp Name or ID:";
 		document.getElementById(\'tea_value\').innerHTML=\'<input type="text" name="value" value="" />\';
 	}
-	else if(type == "alliance")
+	else if(type == "alliance" || type == "ceo")
 	{
 		document.getElementById(\'tea_valuetxt\').innerHTML="Alliance Name or ID:";
 		document.getElementById(\'tea_value\').innerHTML=\'<input type="text" name="value" value="" />\';
@@ -2356,6 +2361,10 @@ value_type();
 			if(!is_numeric($userid))
 				Continue;
 			$api = $apis[$k];
+			
+			if(!$userid || !$api)
+				Continue;
+			
 			$duserid = NULL;
 			$dapi = NULL;
 			$user = $this -> smcFunc['db_query']('', "SELECT userid, api, status, status_change, ID_MEMBER FROM {db_prefix}tea_api WHERE userid = ".mysql_real_escape_string($userid));
@@ -2383,23 +2392,35 @@ value_type();
 			$post = array('keyID' => $userid, 'vCode' => $api);
 			$accnt = $this -> get_xml('keyinfo', $post);
 			$this -> data = $accnt;
-			$accnt = $this -> xmlparse($accnt, "result");
-			//$accnt = $this -> parse($accnt);
-			$accnt = explode("<key ", $accnt);
-			$accnt = explode('type="', $accnt[1], 2);
-			$accnt = explode('" ',$accnt[1],2);
-			$accnt=$accnt[0];
-			if ($accnt!="Account")
+
+			if(stristr($accnt, "error"))
 			{
-				$_SESSION['tea_error'][] = "<b><font color=\"red\">Api must be of Type Character and show ALL toons :)</font></b>";
-				$this -> query("DELETE FROM {db_prefix}tea_api WHERE ID_MEMBER = $memberID AND userid = '" . mysql_real_escape_string($userid) . "'");
-				Continue;
+					$error = $this -> get_error($accnt);
+					if($error[0] == 222)
+					{
+							// TDODO Delete old style api
+					}
 			}
+			else
+			{
+				$accnt = $this -> xmlparse($accnt, "result");
+				//$accnt = $this -> parse($accnt);
+				$accnt = explode("<key ", $accnt);
+				$accnt = explode('type="', $accnt[1], 2);
+				$accnt = explode('" ',$accnt[1],2);
+				$accnt=$accnt[0];
+				if ($accnt!="Account")
+				{
+					$_SESSION['tea_error'][] = "<b><font color=\"red\">Api must be of Type Character and show ALL toons :)</font></b>";
+					$this -> query("DELETE FROM {db_prefix}tea_api WHERE ID_MEMBER = $memberID AND userid = '" . mysql_real_escape_string($userid) . "'");
+					Continue;
+				}
+			}
+			
 			
 			//TODO : check character ID from the db and compare to char ids in the returned xml - if present and smf_member_id not the same then continue and delete api.
 			 
-			if(!$userid || !$api)
-				Continue;
+
 			if($duserid != $userid || $dapi != $api)
 			{
 				$this -> query("

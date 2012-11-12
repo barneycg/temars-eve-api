@@ -5,7 +5,7 @@ class TEAC
 	function __construct()
 	{
 		$this -> version = "1.3";
-		$this -> server = 'http://api.eve-online.com';
+		$this -> server = 'https://api.eveonline.com';
 
 		$this -> atags = array();
 	}
@@ -168,7 +168,7 @@ class TEACN
 	function __construct()
 	{
 		$this -> version = "1.3";
-		$this -> server = 'http://api.eve-online.com';
+		$this -> server = 'https://api.eveonline.com';
 
 		$this -> atags = array();
 	}
@@ -360,7 +360,7 @@ class TEACN
 		if (ini_get('open_basedir') == '' && ini_get('safe_mode' == 'Off'))
 			curl_setopt ($ch, CURLOPT_FOLLOWLOCATION, 1);
 
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		//curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
@@ -373,6 +373,7 @@ class TEACN
 
 	function corp_info($corp)
 	{
+		$info = array();
 		$post = array('corporationID' => $corp);
 		$xml2 = $this -> get_xml('corp', $post);
 		if(strstr($xml2, '<description>'))
@@ -381,7 +382,15 @@ class TEACN
 			$xml2[1] = explode("</description>", $xml2[1], 2);
 			$xml2 = $xml2[0].'<description>removed</description>'.$xml2[1][1];
 		}
-		$xml = new SimpleXMLElement($xml2);
+		try 
+		{
+			$xml = new SimpleXMLElement($xml2);
+		}
+		catch(Exception $e)
+  		{
+  			echo 'corp_info Message: ' .$e->getMessage();
+  			var_dump($xml2);
+  		}
 		if(isset($xml -> result -> corporationName))
 		{
 			$info['corpname'] = (string)$xml -> result -> corporationName;
@@ -402,9 +411,15 @@ class TEACN
 	function standings($keyid, $vcode)
 	{
 		$post = array('keyID' => $keyid, 'vCode' => $vcode);
-		$xml = $this -> get_xml('standings', $post);
-
-		$xml = new SimpleXMLElement($xml);
+		$xml2 = $this -> get_xml('standings', $post);
+		try {
+			$xml = new SimpleXMLElement($xml2);
+		}
+		catch(Exception $e)
+  		{
+  			echo 'standings Message: ' .$e->getMessage();
+  			var_dump($xml2);
+  		}
 		if(!empty($xml -> result -> rowset[0]))
 		{
 			foreach($xml -> result -> rowset[0] as $s)
@@ -469,7 +484,7 @@ class TEACN
 
 	function get_api_characters($keyid, $vcode)
 	{
-		$charlist = NULL;
+		$charlist = array();//NULL;
 		$post = array('keyID' => $keyid, 'vCode' => $vcode);
 		$chars = $this -> get_xml('charlist', $post);
 		$this -> data = $chars;
@@ -494,8 +509,16 @@ class TEACN
 		$skills = NULL;
 		$skilllist = getSkillArray();
 		$post = array('keyID' => $keyid, 'vCode' => $vcode, 'characterID' => $charid);
-		$xml = $this -> get_xml('charsheet', $post);
-		$xml = new SimpleXMLElement($xml);
+		$xml2 = $this -> get_xml('charsheet', $post);
+		try
+		{
+			$xml = new SimpleXMLElement($xml2);
+		}
+		catch(Exception $e)
+  		{
+  			echo 'skills Message: ' .$e->getMessage();
+  			var_dump($xml2);
+  		}
 		if(!empty($xml -> result -> rowset[0]))
 		{
 			foreach($xml -> result -> rowset[0] as $skill)
@@ -511,9 +534,17 @@ class TEACN
 	{
 		$roles = NULL;
 		$post = array('keyID' => $id, 'vCode' => $api, 'characterID' => $charid);
-		$xml = $this -> get_xml('charsheet', $post);
+		$xml2 = $this -> get_xml('charsheet', $post);
 	//	$xml = file_get_contents('me.xml');
-		$xml = new SimpleXMLElement($xml);
+		try
+		{
+			$xml = new SimpleXMLElement($xml2);
+		}
+		catch(Exception $e)
+  		{
+  			echo 'roles Message: ' .$e->getMessage();
+  			var_dump($xml2);
+  		}
 		$rg = array(2, 3, 4, 5);
 		foreach($rg as $i)
 		{
@@ -532,9 +563,17 @@ class TEACN
 	{
 		$titles='';
 		$post = array('keyID' => $id, 'vCode' => $api, 'characterID' => $charid);
-		$xml = $this -> get_xml('charsheet', $post);
+		$xml2 = $this -> get_xml('charsheet', $post);
 			//	$xml = file_get_contents('me.xml');
-		$xml = new SimpleXMLElement($xml);
+		try
+		{
+			$xml = new SimpleXMLElement($xml2);
+		}
+		catch(Exception $e)
+  		{
+  			echo 'titles Message: ' .$e->getMessage();
+  			var_dump($xml2);
+  		}
 		if (!empty($xml -> result -> rowset[6]))
 		{
 			foreach($xml -> result -> rowset[6] as $title)
@@ -548,8 +587,16 @@ class TEACN
 	function mititia($id, $api, $charid)
 	{
 		$post = array('keyID' => $id, 'vCode' => $api, 'characterID' => $charid);
-		$xml = $this -> get_xml('facwar', $post);
-		$xml = new SimpleXMLElement($xml);
+		$xml2 = $this -> get_xml('facwar', $post);
+		try
+		{
+			$xml = new SimpleXMLElement($xml2);
+		}
+		catch(Exception $e)
+  		{
+  			echo 'militia Message: ' .$e->getMessage();
+  			var_dump($xml2);
+  		}
 		$faction = $xml -> result -> factionName;
 		return $faction;
 	}
@@ -626,7 +673,7 @@ class TEACO
 	function __construct()
 	{
 		$this -> version = "1.3";
-		$this -> server = 'http://api.eve-online.com';
+		$this -> server = 'https://api.eveonline.com';
 
 		$this -> atags = array();
 	}
@@ -815,7 +862,7 @@ class TEACO
 		if (ini_get('open_basedir') == '' && ini_get('safe_mode' == 'Off'))
 			curl_setopt ($ch, CURLOPT_FOLLOWLOCATION, 1);
 
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		//curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
@@ -836,12 +883,22 @@ class TEACO
 			$xml2[1] = explode("</description>", $xml2[1], 2);
 			$xml2 = $xml2[0].'<description>removed</description>'.$xml2[1][1];
 		}
-		$xml = new SimpleXMLElement($xml2);
+		try
+		{
+			$xml = new SimpleXMLElement($xml2);
+		}
+		catch(Exception $e)
+  		{
+  			echo 'corp_info Message: ' .$e->getMessage();
+  			var_dump($xml2);
+  		}
+
 		if(isset($xml -> result -> corporationName))
 		{
 			$info['corpname'] = (string)$xml -> result -> corporationName;
 			$info['ticker'] = (string)$xml -> result -> ticker;
 			$info['allianceid'] = (string)$xml -> result -> allianceID;
+			$info['ceoid'] = (string)$xml -> result -> ceoID;
 			if(empty($info['allianceid']) || $info['allianceid'] == '')
 				$info['allianceid'] = 0;
 			$info['alliance'] = (string)$xml -> result -> allianceName;
@@ -856,9 +913,18 @@ class TEACO
 	function standings($userid, $apikey, $charid)
 	{
 		$post = array('userID' => $userid, 'apiKey' => $apikey, 'characterID' => $charid);
-		$xml = $this -> get_xml('standings', $post);
+		$xml2 = $this -> get_xml('standings', $post);
 
-		$xml = new SimpleXMLElement($xml);
+		try
+		{
+			$xml = new SimpleXMLElement($xml2);
+		}
+		catch(Exception $e)
+  		{
+  			echo 'standings Message: ' .$e->getMessage();
+  			var_dump($xml2);
+  		}
+
 		if(!empty($xml -> result -> rowset[0]))
 		{
 			foreach($xml -> result -> rowset[0] as $s)
@@ -948,8 +1014,17 @@ class TEACO
 		$skills = NULL;
 		$skilllist = getSkillArray();
 		$post = array('userID' => $id, 'apiKey' => $api, 'characterID' => $charid);
-		$xml = $this -> get_xml('charsheet', $post);
-		$xml = new SimpleXMLElement($xml);
+		$xml2 = $this -> get_xml('charsheet', $post);
+		try
+		{
+			$xml = new SimpleXMLElement($xml2);
+		}
+		catch(Exception $e)
+  		{
+  			echo 'skills Message: ' .$e->getMessage();
+  			var_dump($xml2);
+  		}
+
 		if(!empty($xml -> result -> rowset[0]))
 		{
 			foreach($xml -> result -> rowset[0] as $skill)
@@ -965,9 +1040,18 @@ class TEACO
 	{
 		$roles = NULL;
 		$post = array('userID' => $id, 'apiKey' => $api, 'characterID' => $charid);
-		$xml = $this -> get_xml('charsheet', $post);
+		$xml2 = $this -> get_xml('charsheet', $post);
 	//	$xml = file_get_contents('me.xml');
-		$xml = new SimpleXMLElement($xml);
+		try
+		{
+			$xml = new SimpleXMLElement($xml2);
+		}
+		catch(Exception $e)
+  		{
+  			echo 'roles Message: ' .$e->getMessage();
+  			var_dump($xml2);
+  		}
+
 		$rg = array(2, 3, 4, 5);
 		foreach($rg as $i)
 		{
@@ -984,10 +1068,20 @@ class TEACO
 
 	function titles($id, $api, $charid)
 	{
+		$titles='';
 		$post = array('userID' => $id, 'apiKey' => $api, 'characterID' => $charid);
-		$xml = $this -> get_xml('charsheet', $post);
+		$xml2 = $this -> get_xml('charsheet', $post);
 	//	$xml = file_get_contents('me.xml');
-		$xml = new SimpleXMLElement($xml);
+		try
+		{
+			$xml = new SimpleXMLElement($xml2);
+		}
+		catch(Exception $e)
+  		{
+  			echo 'titles Message: ' .$e->getMessage();
+  			var_dump($xml2);
+  		}
+
 		if(!empty($xml -> result -> rowset[6]))
 		{
 			foreach($xml -> result -> rowset[6] as $title)
@@ -1001,8 +1095,17 @@ class TEACO
 	function mititia($id, $api, $charid)
 	{
 		$post = array('userID' => $id, 'apiKey' => $api, 'characterID' => $charid);
-		$xml = $this -> get_xml('facwar', $post);
-		$xml = new SimpleXMLElement($xml);
+		$xml2 = $this -> get_xml('facwar', $post);
+		try
+		{
+			$xml = new SimpleXMLElement($xml2);
+		}
+		catch(Exception $e)
+  		{
+  			echo 'militia Message: ' .$e->getMessage();
+  			var_dump($xml2);
+  		}
+
 		$faction = $xml -> result -> factionName;
 		return $faction;
 	}
