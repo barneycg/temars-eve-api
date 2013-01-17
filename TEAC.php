@@ -32,11 +32,7 @@ class TEAC
 
 	function corp_info($corp)
 	{
-		if(empty($this -> newc))
-			$this -> newc = new TEACN;
-		$this -> newc -> atags = $this -> atags;
-		#return TEACN::corp_info($corp);
-		return $this -> newc -> corp_info($corp);
+		return TEACN::corp_info($corp);
 	}
 
 	function standings($userid, $apikey)
@@ -50,21 +46,11 @@ class TEAC
 		if(!empty($userid))
 		{
 			$check = $this -> is_new($userid, $api);
+			
 			if($check)
-				$class = $this -> newc;
+				$chars = TEACN::get_api_characters($userid, $api);
 			else
-				$class = $this -> oldc;
-			//var_dump($this->atags);
-			if (!empty($this->atags))
-			{
-				$class -> atags = $this -> atags;
-			}
-			else
-			{
-				$class -> atags = array();
-			}
-			$chars = $class -> get_api_characters($userid, $api);
-			$this -> data = $class -> data;
+				$chars = TEACO::get_api_characters($userid, $api);
 		}
 		return $chars;
 	}
@@ -73,10 +59,9 @@ class TEAC
 	{
 		$check = $this -> is_new($userid, $api);
 		if($check)
-			$class = $this -> newc;
+			$skills = TEACN::skills($userid, $api);
 		else
-			$class = $this -> oldc;
-		$skills = $class -> skills($userid, $api, $charid);
+			$skills = TEACO::skills($userid, $api);
 		return $skills;
 	}
 
@@ -84,10 +69,9 @@ class TEAC
 	{
 		$check = $this -> is_new($id, $api);
 		if($check)
-			$class = $this -> newc;
+			$roles = TEACN::roles($id, $api, $charid);
 		else
-			$class = $this -> oldc;
-		$roles = $class -> roles($id, $api, $charid);
+			$roles = TEACO::roles($id, $api, $charid);
 		return $roles;
 	}
 
@@ -96,10 +80,9 @@ class TEAC
 	{
 		$check = $this -> is_new($id, $api);
 		if($check)
-			$class = $this -> newc;
+			$titles = TEACN::titles($id, $api, $charid);
 		else
-			$class = $this -> oldc;
-		$titles = $class -> titles($id, $api, $charid);
+			$titles = TEACO::titles($id, $api, $charid);
 		return $titles;
 	}
 
@@ -107,10 +90,9 @@ class TEAC
 	{
 		$check = $this -> is_new($id, $api);
 		if($check)
-			$class = $this -> newc;
+			$militia = TEACN::mititia($id, $api, $charid);
 		else
-			$class = $this -> oldc;
-		$mititia = $class -> mititia($id, $api, $charid);
+			$militia = TEACO::mititia($id, $api, $charid);
 		return $mititia;
 	}
 	function get_error($data)
@@ -146,6 +128,7 @@ class TEAC
 			else
 				Return TRUE;
 		}
+		$post = array();
 		$post = array('keyID' => $keyid, 'vCode' => $vcode);
 		$data = $this -> get_xml('keyinfo', $post);
 		if(stristr($data, "error"))
@@ -175,6 +158,8 @@ class TEACN
 
 	function get_xml($type, $post = NULL)
 	{
+		$url = '';
+		$xml = '';
 		if($type == 'standings')
 			$url = "/corp/ContactList.xml.aspx";
 		elseif($type == 'alliances')
@@ -191,6 +176,8 @@ class TEACN
 			$url = "/eve/CharacterName.xml.aspx";
 		elseif($type == 'keyinfo')
 			$url = "/account/APIKeyInfo.xml.aspx";
+		elseif($type == 'calllist')
+			$url = "/api/callList.xml.aspx";
 		else
 			$url = "/account/Characters.xml.aspx";
 
@@ -205,16 +192,17 @@ class TEACN
 		}
 		
 		$cache = FALSE;
-		if($type != 'standings' && $type != 'alliances' && method_exists($this, 'get_cache'))
+		if($type != 'calllist' && $type != 'standings' && $type != 'alliances' && method_exists($this, 'get_cache'))
 		{
 			$cache = $this -> get_cache($url, $post);
 		}
 		if($cache)
+		{
 			return $cache;
-
+		}
 		$xml = $this -> get_site($this -> server.$url, $post);
-		
-		if($type != 'standings' && $type != 'alliances' && method_exists($this, 'set_cache'))
+
+		if($type != 'calllist' && $type != 'standings' && $type != 'alliances' && method_exists($this, 'set_cache'))
 		{
 			$cache = $this -> set_cache($url, $post, $xml);
 		}
@@ -279,10 +267,7 @@ class TEACN
 
 		// Rebuild the full query after parse_url
 		$url = $get_url["path"];
-		// if (!empty($get_url["query"]))
-		// {
-			// $url .= '?' . $get_url["query"];
-		// }
+	
 		if(!empty($post))
 		{
 			$url .= '?'.$post;
@@ -360,22 +345,29 @@ class TEACN
 		if (ini_get('open_basedir') == '' && ini_get('safe_mode' == 'Off'))
 			curl_setopt ($ch, CURLOPT_FOLLOWLOCATION, 1);
 
-		//curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
 		$data = curl_exec($ch);
 		curl_close($ch);
 
-		//echo "<pre>"; var_dump($data); echo "</pre>";
 		Return $data;
 	}
 
 	function corp_info($corp)
 	{
 		$info = array();
+		$post = array();;
 		$post = array('corporationID' => $corp);
+		$xml2 = '';
 		$xml2 = $this -> get_xml('corp', $post);
+		
+		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) )
+		{
+				echo "API System Screwed - Can't fetch Corp Info : \n";
+				var_dump ($xml2);
+				Return 9999;
+		}
+		
 		if(strstr($xml2, '<description>'))
 		{
 			$xml2 = explode("<description>", $xml2, 2);
@@ -411,7 +403,16 @@ class TEACN
 	function standings($keyid, $vcode)
 	{
 		$post = array('keyID' => $keyid, 'vCode' => $vcode);
+		$xml2 = '';
 		$xml2 = $this -> get_xml('standings', $post);
+		
+		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) )
+		{
+				echo "API System Screwed - Can't Fetch Standings : \n";
+				var_dump ($xml2);
+				Return 9999;
+		}
+		
 		try {
 			$xml = new SimpleXMLElement($xml2);
 		}
@@ -484,9 +485,19 @@ class TEACN
 
 	function get_api_characters($keyid, $vcode)
 	{
-		$charlist = array();//NULL;
+		$charlist = array();
+		$post = array();
 		$post = array('keyID' => $keyid, 'vCode' => $vcode);
 		$chars = $this -> get_xml('charlist', $post);
+		
+		if( (stristr($chars, "runtime")) || (stristr($chars, "The service is unavailable")) || (!$chars) )
+		{
+				echo "API System Screwed - Can't fetch Toons : \n";
+				$this -> data = $chars;
+				var_dump ($chars);
+				Return 9999;
+		}
+		
 		$this -> data = $chars;
 		$chars = $this -> xmlparse($chars, "result");
 		$chars = $this -> parse($chars);
@@ -497,6 +508,11 @@ class TEACN
 			{
 				//	$chars[] = array('name' => $name, 'charid' => $charid, 'corpname' => $corpname, 'corpid' => $corpid);
 				$corpinfo = $this -> corp_info($char['corpid']); // corpname, ticker, allianceid, alliance, aticker
+				if ($corpinfo == 9999)
+				{
+					$charlist = 9999;
+					return $charlist;
+				}
 				$char = array_merge($char, $corpinfo);
 				$charlist[] = $char;
 			}
@@ -508,8 +524,18 @@ class TEACN
 	{
 		$skills = NULL;
 		$skilllist = getSkillArray();
+		$post = array();
 		$post = array('keyID' => $keyid, 'vCode' => $vcode, 'characterID' => $charid);
+		$xml2 = '';
 		$xml2 = $this -> get_xml('charsheet', $post);
+		
+		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) )
+		{
+				echo "API System Screwed - Can't Fetch Skills : \n";
+				var_dump ($xml2);
+				Return 9999;
+		}
+		
 		try
 		{
 			$xml = new SimpleXMLElement($xml2);
@@ -533,9 +559,20 @@ class TEACN
 	function roles($id, $api, $charid)
 	{
 		$roles = NULL;
+		$post = array();
 		$post = array('keyID' => $id, 'vCode' => $api, 'characterID' => $charid);
+		$xml2='';
+		//echo "getting Roles\n";
 		$xml2 = $this -> get_xml('charsheet', $post);
 	//	$xml = file_get_contents('me.xml');
+		
+		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) )
+		{
+				echo "API System Screwed - Can't fetch Roles: \n";
+				var_dump ($xml2);
+				Return 9999;
+		}		
+		
 		try
 		{
 			$xml = new SimpleXMLElement($xml2);
@@ -562,9 +599,19 @@ class TEACN
 	function titles($id, $api, $charid)
 	{
 		$titles='';
+		$post = array();
 		$post = array('keyID' => $id, 'vCode' => $api, 'characterID' => $charid);
+		$xml2='';
 		$xml2 = $this -> get_xml('charsheet', $post);
 			//	$xml = file_get_contents('me.xml');
+			
+		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) )
+		{
+				echo "API System Screwed - Can't fetch Titles : \n";
+				var_dump ($xml2);
+				Return 9999;
+		}			
+			
 		try
 		{
 			$xml = new SimpleXMLElement($xml2);
@@ -578,7 +625,16 @@ class TEACN
 		{
 			foreach($xml -> result -> rowset[6] as $title)
 			{
-				$titles[strtolower((string)$title["titleName"])] = TRUE;
+				preg_match_all("|<[^>]+>(.*)</[^>]+>|U",$title["titleName"],$tmp, PREG_PATTERN_ORDER);
+				if (!empty($tmp[1][0]))
+				{
+					$tit = $tmp[1][0];
+				}
+				else
+				{
+					$tit = $title["titleName"];
+				}
+				$titles[strtolower((string)$tit)] = TRUE;
 			}
 		}
 		return $titles;
@@ -586,8 +642,18 @@ class TEACN
 
 	function mititia($id, $api, $charid)
 	{
+		$post = array();
 		$post = array('keyID' => $id, 'vCode' => $api, 'characterID' => $charid);
+		$xml2 = '';
 		$xml2 = $this -> get_xml('facwar', $post);
+		
+		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) )
+		{
+				echo "API System Screwed - Can't fetch Militia : \n";
+				var_dump ($xml2);
+				Return 9999;
+		}		
+		
 		try
 		{
 			$xml = new SimpleXMLElement($xml2);
@@ -875,7 +941,9 @@ class TEACO
 
 	function corp_info($corp)
 	{
+		$post = array();
 		$post = array('corporationID' => $corp);
+		$xml2 = '';
 		$xml2 = $this -> get_xml('corp', $post);
 		if(strstr($xml2, '<description>'))
 		{
@@ -912,7 +980,9 @@ class TEACO
 
 	function standings($userid, $apikey, $charid)
 	{
+		$post = array();
 		$post = array('userID' => $userid, 'apiKey' => $apikey, 'characterID' => $charid);
+		$xml2 = '';
 		$xml2 = $this -> get_xml('standings', $post);
 
 		try
@@ -990,6 +1060,7 @@ class TEACO
 	function get_api_characters($userid, $api)
 	{
 		$charlist = NULL;
+		$post = array();
 		$post = array('userID' => $userid, 'apiKey' => $api);
 		$chars = $this -> get_xml('charlist', $post);
 		$this -> data = $chars;
@@ -1013,7 +1084,9 @@ class TEACO
 	{
 		$skills = NULL;
 		$skilllist = getSkillArray();
+		$post = array();
 		$post = array('userID' => $id, 'apiKey' => $api, 'characterID' => $charid);
+		$xml2 = '';
 		$xml2 = $this -> get_xml('charsheet', $post);
 		try
 		{
@@ -1039,7 +1112,9 @@ class TEACO
 	function roles($id, $api, $charid)
 	{
 		$roles = NULL;
+		$post = array();
 		$post = array('userID' => $id, 'apiKey' => $api, 'characterID' => $charid);
+		$xml2 = '';
 		$xml2 = $this -> get_xml('charsheet', $post);
 	//	$xml = file_get_contents('me.xml');
 		try
@@ -1069,7 +1144,9 @@ class TEACO
 	function titles($id, $api, $charid)
 	{
 		$titles='';
+		$post = array();
 		$post = array('userID' => $id, 'apiKey' => $api, 'characterID' => $charid);
+		$xml2 = '';
 		$xml2 = $this -> get_xml('charsheet', $post);
 	//	$xml = file_get_contents('me.xml');
 		try
@@ -1094,7 +1171,9 @@ class TEACO
 
 	function mititia($id, $api, $charid)
 	{
+		$post = array();
 		$post = array('userID' => $id, 'apiKey' => $api, 'characterID' => $charid);
+		$xml2 = '';
 		$xml2 = $this -> get_xml('facwar', $post);
 		try
 		{
