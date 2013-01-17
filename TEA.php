@@ -23,7 +23,7 @@ class TEA extends TEAC
 		$this -> smcFunc = &$smcFunc;
 		$this -> settings = &$settings;
 
-		$this -> version = "1.3.0 r169";
+		$this -> version = "1.3.0 r170";
 
 		$permissions["tea_view_own"] = 1;
 		$permissions["tea_view_any"] = 0;
@@ -153,6 +153,9 @@ class TEA extends TEAC
 
 		//.$this -> get_xml("", "", "")."</pre>";
 		//echo "<pre>"; var_dump($this -> modSettings);die;
+		if (!$this -> check_api_service())
+			return false;
+		//echo " checked call list \n";
 		$this -> alliance_list();
 		$this -> get_standings();
 		$this -> main($apiuser, $force);
@@ -171,6 +174,19 @@ class TEA extends TEAC
 			$this -> all($force);
 	}
 
+	function check_api_service()
+	{
+		//$post = array('keyID' => $this -> modSettings["tea_apiid"], 'vCode' => $this -> modSettings["tea_vcode"]);
+		$accnt = $this -> get_xml('calllist');
+		if( (stristr($accnt, "runtime")) || (stristr($accnt, "The service is unavailable")) || (!$accnt) )
+		{	
+			echo "API System Screwed : \n";
+			var_dump ($accnt);
+			Return false;
+		}
+		Return true;
+	}
+	
 	function get_standings()
 	{
 		$sfile = $this -> sourcedir."/../TEA/eve_standings.php";
@@ -213,6 +229,7 @@ class TEA extends TEAC
 	function single($user)
 	{
 		//echo $user ."\n";
+		
 		if(isset($this -> modSettings["tea_groupass_unknown"]))
 			$mongroups[$this -> modSettings["tea_groupass_unknown"]] = TRUE;
 		else
@@ -273,7 +290,7 @@ class TEA extends TEAC
 				$cr['main'] = 'Not Monitored';
 			}
 			$apiusers=array();
-			$apiuserstmp = $this -> smcFunc['db_query']('', "SELECT userid, api, status FROM {db_prefix}tea_api WHERE ID_MEMBER = {int:id}", array('id' => $id));
+			$apiuserstmp = $this -> smcFunc['db_query']('', "SELECT userid, api, status FROM {db_prefix}tea_api WHERE ID_MEMBER = {int:id} AND (errorid is NULL or errorid != 203)", array('id' => $id));
 			$apiusers = $this -> select($apiuserstmp);
 			if(!empty($apiusers))
 			{
@@ -285,24 +302,26 @@ class TEA extends TEAC
 					$status = $aapiuser[2];
 					$apiuser = $aapiuser[0];
 					//BARNEYG
-					
+					$post = array();
 					$post = array('keyID' => $apiuser, 'vCode' => $apikey);
 					$accnt = $this -> get_xml('keyinfo', $post);
-
-					$this -> data = $accnt;
 					if(stristr($accnt, "error"))
 					{
-						$error = $this -> get_error($accnt);
+                                                $error = $this -> get_error($accnt);
+                                                $this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = '".$error[0]."', error = '".$error[1]."', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+                                                $chars[] = array('name' => NULL, 'charid' => NULL, 'corpname' => NULL, 'corpid' => NULL, 'ticker' => NULL, 'allianceid' => NULL, 'alliance' => NULL);
+                                                $status = 'error';
+                                                $error = TRUE;
+
 						if($error[0] == 222)
 						{
-							// TDODO Delete old style api
+							// TODO Delete old style api
 						}
 					}
 					else
 					{
 						$accnt = $this -> xmlparse($accnt, "result");
 						
-						//$accnt = $this -> parse($accnt);
 						$accnt = explode("<key ", $accnt);
 						$accnt = explode('type="', $accnt[1], 2);
 						$accnt = explode('" ',$accnt[1],2);
@@ -311,19 +330,19 @@ class TEA extends TEAC
 						if ($accnt!="Account")
 						{
 							$_SESSION['tea_error'][] = "<b><font color=\"red\">Api must be of Type Character and show ALL toons ;)</font></b>";
-							//$this -> query("DELETE FROM {db_prefix}tea_api WHERE ID_MEMBER = $memberID AND userid = '" . mysql_real_escape_string($userid) . "'");
 							Continue;
 						}
 					}
-					//echo " " .$apikey . " " . $accnt . "\n";					
+					
 					if ($apikey)
 					{
 						
 						$error = FALSE;
 	
 						$matched = array('none', array());
-	
+						
 						$chars = $this -> get_characters($apiuser, $apikey);
+						
 						if(empty($chars))
 						{
 							$error = $this -> get_error($this -> data);
@@ -361,8 +380,6 @@ class TEA extends TEAC
 											$match = TRUE;
 											foreach($conditions as $cond)
 											{
-												//echo "<pre>"; var_dump($cond);die;
-											//	$this -> chars[] = $char;
 												Switch($cond[0])
 												{
 													case 'corp':
@@ -619,8 +636,6 @@ class TEA extends TEAC
 							{
 								foreach($rules as $rule)
 								{
-									//if(isset($agroups[$rule[1]])) // group already assigned no point checking
-									//	Break;
 									$andor = $rule[2];
 									foreach($chars as $char)
 									{
@@ -631,27 +646,8 @@ class TEA extends TEAC
 											$amatch = TRUE;
 											foreach($conditions as $cond)
 											{
-											//	$this -> chars[] = $char;
 												Switch($cond[0])
 												{
-													case 'ceo':
-														if ($cond[3] == 'is' && $char['allianceid'] == $cond[1])
-														{
-															$corpd = $this -> corp_info($char['corpid']);
-															$ceoid = $corpd['ceoid'];
-															if ($char['charid'] == $ceoid)
-															{
-																Break 2;
-															}
-															$amatch = FALSE;
-															Break;
-														}
-														else
-														{
-															$amatch = FALSE;
-															Break 2;
-														}	
-														
 													case 'corp':
 														if($cond[3] == 'is' && $char['corpid'] == $cond[1])
 														{
@@ -667,9 +663,29 @@ class TEA extends TEAC
 														}
 														else
 														{
+															
 															$amatch = FALSE;
 															Break 2;
 														}
+													case 'ceo':
+														if ($cond[3] == 'is' && $char['allianceid'] == $cond[1])
+														{
+															$corpd = $this -> corp_info($char['corpid']);
+															if ($corpd == 9999)
+																return 9999;
+															$ceoid = $corpd['ceoid'];
+															if ($char['charid'] == $ceoid)
+															{
+																Break;
+															}
+															$amatch = FALSE;
+															Break;
+														}
+														else
+														{
+															$amatch = FALSE;
+															Break 2;
+														}	
 													case 'alliance':
 														if($cond[3] == 'is' && $char['allianceid'] == $cond[1])
 														{
@@ -809,6 +825,8 @@ class TEA extends TEAC
 														}
 													case 'role':
 														$roles = $this -> roles($apiuser, $apikey, $char['charid']);
+														if ($roles == 9999)
+															return 9999;
 														if($cond[3] == 'is' && isset($roles['role'.strtolower($cond[1])]))
 														{
 															if($andor == 'OR')
@@ -828,6 +846,8 @@ class TEA extends TEAC
 														}
 													case 'title':
 														$titles = $this -> titles($apiuser, $apikey, $char['charid']);
+														if ($titles == 9999)
+															return 9999;
 														if($cond[3] == 'is' && isset($titles[strtolower($cond[1])]))
 														{
 															if($andor == 'OR')
@@ -945,7 +965,12 @@ class TEA extends TEAC
 	function get_characters($userid, $api)
 	{
 		$charlist = NULL;
+		//var_dump(get_class_methods($this));
 		$chars = $this -> get_api_characters($userid, $api);
+		if ($chars == 9999)
+		{
+			Return $charlist;
+		}
 		if(!empty($chars))
 		{
 			$charlist = array();
@@ -1092,18 +1117,25 @@ class TEA extends TEAC
 			{
 				$this -> log .= '<tr><td>'.$user[1].'</td>';
 				$cr = $this -> single($user[0]);
-				if(is_array($cr['additional']))
+				if ($cr != 9999)
 				{
-					foreach($cr['additional'] as &$c)
+					if(is_array($cr['additional']))
 					{
-						if(is_numeric($c))
-							$c = $this -> get_rule_name($c);
+						foreach($cr['additional'] as &$c)
+						{
+							if(is_numeric($c))
+								$c = $this -> get_rule_name($c);
+						}
+						$cr['additional'] = implode(', ', $cr['additional']);
 					}
-					$cr['additional'] = implode(', ', $cr['additional']);
+					if(is_numeric($cr['main']))
+						$cr['main'] = $this -> get_rule_name($cr['main']);
+					$this -> log .= '<td>'.$cr['main'].'</td><td>'.$cr['additional'].'</td></tr>';
 				}
-				if(is_numeric($cr['main']))
-					$cr['main'] = $this -> get_rule_name($cr['main']);
-				$this -> log .= '<td>'.$cr['main'].'</td><td>'.$cr['additional'].'</td></tr>';
+				else
+				{ 
+					$this -> log .= '<td>API SCREWED</td><td>API SCREWED</td></tr>';
+				}
 				if(time() > $limit)
 				{
 					$blastid = $user[0];
@@ -1763,6 +1795,7 @@ class TEA extends TEAC
 					$value = $_POST['value'];
 					if(!is_numeric($value))
 					{
+						$post = array();
 						$post = array('names' => $value);
 						$xml = $this -> get_xml('find', $post);
 						$xml = new SimpleXMLElement($xml);
@@ -1817,6 +1850,7 @@ class TEA extends TEAC
 							$alliances = array_flip($alliances);
 							if(isset($alliances[$value]))
 							{
+								$post = array();
 								$post = array('ids' => $value);
 								$xml = $this -> get_xml('name', $post);
 								$xml = new SimpleXMLElement($xml);
@@ -2389,6 +2423,7 @@ value_type();
 					Continue;
 				}
 			}
+			$post = array();
 			$post = array('keyID' => $userid, 'vCode' => $api);
 			$accnt = $this -> get_xml('keyinfo', $post);
 			$this -> data = $accnt;
@@ -2892,7 +2927,7 @@ value_type();
 									<dt>
 										<b>TEA Required Options:</b></dt>
 									<dd>
-										CharacterInfo, CharacterSheet, FacWarStats
+										<a href="https://support.eveonline.com/api/Key/CreatePredefined/25165896" target="_blank">CharacterInfo, CharacterSheet, FacWarStats</a>
 									</dd>
 									<dt>
 										<b>', $this -> txt['tea_userid'], ':</b></dt>
@@ -2983,6 +3018,7 @@ function postFileReady()
 		
 		$apiuser=$_POST['tea_user_id'];
 		$apikey=$_POST['tea_user_api'];
+		$post = array();
 		$post = array('keyID' => $apiuser, 'vCode' => $apikey);
 		$accnt = $this -> get_xml('keyinfo', $post);
 					
@@ -3128,7 +3164,6 @@ $teaj -> tea = $tea;
 
 Global $forum_copyright;
 $forum_copyright .= '</span></li><li class="copyright"><span><a href="http://code.google.com/p/temars-eve-api/" target="_blank" class="new_win">TEA '.$tea -> version.' &copy; 2009-2011, Temars EVE API</a>';
-$forum_copyright .= '</span></li><li class="copyright"><span><a href="https://forum.lawnalliance.org/index.php?action=pm;sa=send;u=10;sub=LAWN IT Infrastructure Issue" target="_blank" class="new_win">IT Infrastructure Contact</a>';
 
 function edittea($memID)
 {
@@ -3270,7 +3305,7 @@ function template_edittea()
 				foreach($info['charnames'] as $key => $char)
 				{
 					$char[3] = $char[3] != '' ? ' / <blue>'.$char[3].'</blue>' : '';
-					$echo[] = '['.$char[1].'] '.'<a href="http://skills.lawnalliance.org/index.php?usid='.$info['userid'].'&apik='.$info['api'].'&chid='.$key.'" target=_blank>'.$char[0].'</a>'.' (<green>'.$char[2].'</green>'.$char[3].')';
+					$echo[] = '['.$char[1].'] '.$char[0].' (<green>'.$char[2].'</green>'.$char[3].')';
 				}
 				echo implode('<br>', $echo);
 			}
@@ -3296,7 +3331,7 @@ function template_edittea()
 				if($info['userid'] == "")
 					echo '<tr><td><b>TEA Required Options:</b></td>
 									<td>
-										CharacterInfo, CharacterSheet, FacWarStats
+										<a href="https://support.eveonline.com/api/Key/CreatePredefined/25165896" target="_blank">CharacterInfo, CharacterSheet, FacWarStats</a>
 									</td></tr>';
 
 			}
