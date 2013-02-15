@@ -23,7 +23,7 @@ class TEA extends TEAC
 		$this -> smcFunc = &$smcFunc;
 		$this -> settings = &$settings;
 
-		$this -> version = "1.3.0 r170";
+		$this -> version = "1.3.0 r172";
 
 		$permissions["tea_view_own"] = 1;
 		$permissions["tea_view_any"] = 0;
@@ -342,20 +342,21 @@ class TEA extends TEAC
 						$matched = array('none', array());
 						
 						$chars = $this -> get_characters($apiuser, $apikey);
-						
-						if(empty($chars))
+						if ($chars != 9998)
 						{
-							$error = $this -> get_error($this -> data);
-							$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = '".$error[0]."', error = '".$error[1]."', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
-							if(($error[0] >= 500 && $error[0] < 600) || ($error[0] >= 900 && $error[0] < 1000)) // Api System is Down
-								return $cr;
-							else
-								$chars[] = array('name' => NULL, 'charid' => NULL, 'corpname' => NULL, 'corpid' => NULL, 'ticker' => NULL, 'allianceid' => NULL, 'alliance' => NULL);
-							$status = 'error';
-							$error = TRUE;
-						}
-						if(!empty($chars))
-						{
+							if(empty($chars))
+							{
+								$error = $this -> get_error($this -> data);
+								$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = '".$error[0]."', error = '".$error[1]."', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+								if(($error[0] >= 500 && $error[0] < 600) || ($error[0] >= 900 && $error[0] < 1000)) // Api System is Down
+									return $cr;
+								else
+									$chars[] = array('name' => NULL, 'charid' => NULL, 'corpname' => NULL, 'corpid' => NULL, 'ticker' => NULL, 'allianceid' => NULL, 'alliance' => NULL);
+								$status = 'error';
+								$error = TRUE;
+							}
+							if(!empty($chars))
+							{
 							if(!$error)
 								$this -> query("UPDATE {db_prefix}tea_api SET status = 'OK', status_change = ".time()." WHERE ID_MEMBER = {int:id} AND userid = {int:userid}",
 							array('id' => $id, 'userid' => $apiuser));
@@ -919,6 +920,7 @@ class TEA extends TEAC
 							else
 								$this -> query("UPDATE {db_prefix}tea_api SET matched = '".$matched."', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
 						}
+						}
 					}
 					else
 					{
@@ -976,6 +978,14 @@ class TEA extends TEAC
 			$charlist = array();
 			foreach($chars as $char)
 			{
+				$user = $this -> smcFunc['db_query']('', "SELECT * FROM {db_prefix}tea_characters WHERE charid = ".mysql_real_escape_string($char['charid'])." and userid != ".mysql_real_escape_string($userid));
+                        	$user = $this -> select($user);
+				if (!empty($user))
+				{
+					$_SESSION['tea_error'][] = "<b><font color=\"red\">Character already listed with a different api key</font></b> - ".$user[0][2];
+					$this -> query("UPDATE {db_prefix}tea_api SET errorid=9998,error='Toons exist ".$user[0][1]."' WHERE userid = " . mysql_real_escape_string($userid). " and api = '" . mysql_real_escape_string($api)."'");
+					return 9998;
+				}
 				$charlist[] = $char;
 				$this -> chars[$char['name']] = $char;
 				$this -> query("
@@ -1511,7 +1521,7 @@ class TEA extends TEAC
 		$chars = $this -> get_characters($userid, $api);
 
 		$charlist = array();
-		if(!empty($chars))
+		if((!empty($chars)) && ($chars != 9998))
 		{
 			foreach($chars as $char)
 			{
@@ -1866,12 +1876,14 @@ class TEA extends TEAC
 					$value = mysql_real_escape_string($value);
 					$extra = mysql_real_escape_string($extra);
 				}
-				elseif($type == "skill" || $type == "role" || $type == "title" || $type == "militia")
+				elseif($type == "role" || $type == "title" || $type == "militia")
 					$value = mysql_real_escape_string($_POST['value']);
 
 				elseif($type == "skill")
+				{
+					$value = mysql_real_escape_string($_POST['value']);
 					$extra = (int)$_POST['extra'];
-
+				}
 				if(isset($groups[$_POST['group']]))
 					$group = $_POST['group'];
 				elseif(!$exists)
@@ -2195,7 +2207,7 @@ function value_type(fromedit)
 	else if(type == "skill")
 	{
 		document.getElementById(\'tea_valuetxt\').innerHTML="Skill:";
-		document.getElementById(\'tea_value\').innerHTML=\'<input type="text" name="value" value="" /> % wildcard Allowed<br>Level: <input type="radio" name="extra" value="1" /> 1 <input type="radio" name="extra" value="1" /> 2 <input type="radio" name="extra" value="1" /> 3 <input type="radio" name="extra" value="1" /> 4 <input type="radio" name="extra" value="1" /> 5\';
+		document.getElementById(\'tea_value\').innerHTML=\'<input type="text" name="value" value="" /> % wildcard Allowed<br>Level: <input type="radio" name="extra" value="1" /> 1 <input type="radio" name="extra" value="2" /> 2 <input type="radio" name="extra" value="3" /> 3 <input type="radio" name="extra" value="4" /> 4 <input type="radio" name="extra" value="5" /> 5\';
 	}
 	else if(type == "role")
 	{
@@ -2407,7 +2419,7 @@ value_type();
 			{
 				if($user[0][4] != $memberID)
 				{
-					$_SESSION['tea_error'][] = "API is already Attached to a Different Account";
+					$_SESSION['tea_error'][] = "<b><font color=\"red\">API is already Attached to a Different Account</font></b>";
 					Continue;
 				}
 				$duserid = $user[0][0];
@@ -2471,6 +2483,7 @@ value_type();
 			foreach($_POST['del_api'] as $userid)
 			{
 				$this -> query("DELETE FROM {db_prefix}tea_api WHERE ID_MEMBER = $memberID AND userid = '" . mysql_real_escape_string($userid) . "'");
+				$this -> query("DELETE FROM {db_prefix}tea_characters WHERE userid = '" . mysql_real_escape_string($userid) . "'");
 			}
 		}
 		unset($_POST['del_api']);
@@ -3004,60 +3017,62 @@ function postFileReady()
 				return("API is already Attached to an Account");
 			}
 		}
-		if($this -> modSettings['tea_regreq'])
+		if ( !empty($_POST['tea_user_id']) || !empty($_POST['tea_user_api']) || $this -> modSettings['tea_regreq'] )
 		{
 			$chars = $this -> get_characters($_POST['tea_user_id'], $_POST['tea_user_api']);
-			if(empty($chars)) // invalid api
+			if ((empty($chars)) || ($chars = 9998)) // invalid api
 			{
 				$ret = $this -> txt['tea_regreq_error'];
 				if(empty($ret))
 					$ret = 'A Valid API is Required to Register on this Forum';
+				if ($chars = 9998)
+					$ret = $ret . " - you are trying to register with a character that already exists in our records";
 				Return $ret;
 			}
-		}
 		
-		$apiuser=$_POST['tea_user_id'];
-		$apikey=$_POST['tea_user_api'];
-		$post = array();
-		$post = array('keyID' => $apiuser, 'vCode' => $apikey);
-		$accnt = $this -> get_xml('keyinfo', $post);
-					
-		$this -> data = $accnt;
+			$apiuser=$_POST['tea_user_id'];
+			$apikey=$_POST['tea_user_api'];
+			$post = array();
+			$post = array('keyID' => $apiuser, 'vCode' => $apikey);
+			$accnt = $this -> get_xml('keyinfo', $post);
 
-		$accnt = $this -> xmlparse($accnt, "result");
-		
-		//$accnt = $this -> parse($accnt);
-		$accnt = explode("<key ", $accnt);
-		$accnt = explode('type="', $accnt[1], 2);
-		$accnt = explode('" ',$accnt[1],2);
-		$accnt=$accnt[0];
-		
-		if ($accnt!="Account")
-		{
-			$ret = 'The API needs to show All characters on the account';
-			Return $ret;
-		}
-		
-		if(!empty($_POST['tea_user_id']) && (empty($_POST['tea_charid']) || strlen($_POST['tea_charid']) < 3))
-		{
-			echo '
-				<script type="text/javascript">
+			$this -> data = $accnt;
+
+			$accnt = $this -> xmlparse($accnt, "result");
+
+			//$accnt = $this -> parse($accnt);
+			$accnt = explode("<key ", $accnt);
+			$accnt = explode('type="', $accnt[1], 2);
+			$accnt = explode('" ',$accnt[1],2);
+			$accnt=$accnt[0];
+
+			if ($accnt!="Account")
+			{
+				$ret = 'The API needs to show All characters on the account';
+				Return $ret;
+			}
+
+			if(!empty($_POST['tea_user_id']) && (empty($_POST['tea_charid']) || strlen($_POST['tea_charid']) < 3))
+			{
+				echo '
+					<script type="text/javascript">
 					auto = 1;
 				</script>
-			';
-			$ret = $this -> txt['tea_regchar_error'];
-			if(empty($ret))
-				$ret = 'Please Select a Character';
-			Return $ret;
-		}
-		$check = $this -> is_new($_POST['tea_user_id'], $_POST['tea_user_api']);
-		if(!$check) // old api
-		{
-		//	$ret = $this -> txt['tea_regreq_error'];
-		//	if(empty($ret))
+					';
+				$ret = $this -> txt['tea_regchar_error'];
+				if(empty($ret))
+					$ret = 'Please Select a Character';
+				Return $ret;
+			}
+			$check = $this -> is_new($_POST['tea_user_id'], $_POST['tea_user_api']);
+			if(!$check) // old api
+			{
+				//	$ret = $this -> txt['tea_regreq_error'];
+				//	if(empty($ret))
 				$ret = 'A NEW API is Required to Register on this Forum, OLD API\'s no longer Supported for Registration';
-			Return $ret;
-		}		
+				Return $ret;
+			}		
+		}
 	}
 
 	function avatar_option()
