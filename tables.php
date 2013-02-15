@@ -270,5 +270,5 @@ if($esamupgrade)
 }
 
 // try to chmod the xmlhttp file as this is an issue for some
-chmod($boarddir."/TEA_xmlhttp.php", 0644);
+chmod($boarddir."/TEA/TEA_xmlhttp.php", 0644);
 ?>

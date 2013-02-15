@@ -59,9 +59,9 @@ class TEAC
 	{
 		$check = $this -> is_new($userid, $api);
 		if($check)
-			$skills = TEACN::skills($userid, $api);
+			$skills = TEACN::skills($userid, $api, $charid);
 		else
-			$skills = TEACO::skills($userid, $api);
+			$skills = TEACO::skills($userid, $api, $charid);
 		return $skills;
 	}
 
