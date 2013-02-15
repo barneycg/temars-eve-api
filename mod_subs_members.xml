@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<!DOCTYPE modification SYSTEM "http://www.simplemachines.org/xml/modification">
+<modification xmlns="http://www.simplemachines.org/xml/modification" xmlns:smf="http://www.simplemachines.org/">
+	<id>temar:TEA</id>
+	<version>1.1.2</version>
+
+	<file name="$sourcedir/Subs-Members.php">
+
+		<operation>
+			<search position="replace"><![CDATA[	// Delete the member.
+]]></search>
+			<add><![CDATA[	// Delete TEA stuff
+	$tea_userids =  $smcFunc['db_query']('', 'SELECT userid FROM {db_prefix}tea_api WHERE ID_MEMBER IN ({array_int:users})', array('users' => $users,));
+	while ($tea_row = $smcFunc['db_fetch_assoc']($tea_userids))
+	{
+		$userid=$tea_row['userid'];
+		$smcFunc['db_query']('', 'DELETE FROM {db_prefix}tea_characters WHERE userid = {int:userid}', array('userid' => $userid,));
+	}
+	$smcFunc['db_free_result']($tea_userids);
+	$smcFunc['db_query']('', 'DELETE FROM {db_prefix}tea_api WHERE ID_MEMBER IN ({array_int:users})', array('users' => $users,));
+
+	// Delete the member.
+]]></add>
+		</operation>
+	</file>
+
+</modification>

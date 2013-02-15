@@ -14,6 +14,7 @@
 		<modification type="file">mod_index.xml</modification>
 		<modification type="file">mod_admin.xml</modification>
 		<modification type="file">mod_subs.xml</modification>
+		<modification type="file">mod_subs_members.xml</modification>
 		<modification type="file">mod_profile.xml</modification>
 		<modification type="file">mod_profile_modify.xml</modification>
 		<modification type="file">mod_register.xml</modification>
@@ -41,6 +42,7 @@
 		<modification type="file">mod_index.xml</modification>
 		<modification type="file">mod_admin.xml</modification>
 		<modification type="file">mod_subs.xml</modification>
+		<modification type="file">mod_subs_members.xml</modification>
 		<modification type="file">mod_profile.xml</modification>
 		<modification type="file">mod_profile_modify.xml</modification>
 		<modification type="file">mod_register.xml</modification>
@@ -67,6 +69,7 @@
 		<modification type="file" reverse="true">mod_index.xml</modification>
 		<modification type="file" reverse="true">mod_admin.xml</modification>
 		<modification type="file" reverse="true">mod_subs.xml</modification>
+		<modification type="file" reverse="true">mod_subs_members.xml</modification>
 		<modification type="file" reverse="true">mod_profile.xml</modification>
 		<modification type="file" reverse="true">mod_profile_modify.xml</modification>
 		<modification type="file" reverse="true">mod_register.xml</modification>
