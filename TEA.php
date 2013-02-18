@@ -294,7 +294,6 @@ class TEA extends TEAC
 			$apiusers = $this -> select($apiuserstmp);
 			if(!empty($apiusers))
 			{
-
 				$mainmatch = FALSE;
 				foreach($apiusers as $aapiuser)
 				{
@@ -305,13 +304,14 @@ class TEA extends TEAC
 					$post = array();
 					$post = array('keyID' => $apiuser, 'vCode' => $apikey);
 					$accnt = $this -> get_xml('keyinfo', $post);
+					
 					if(stristr($accnt, "error"))
 					{
-                                                $error = $this -> get_error($accnt);
-                                                $this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = '".$error[0]."', error = '".$error[1]."', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
-                                                $chars[] = array('name' => NULL, 'charid' => NULL, 'corpname' => NULL, 'corpid' => NULL, 'ticker' => NULL, 'allianceid' => NULL, 'alliance' => NULL);
-                                                $status = 'error';
-                                                $error = TRUE;
+						$error = $this -> get_error($accnt);
+						$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = '".$error[0]."', error = '".$error[1]."', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+						$chars = array('name' => NULL, 'charid' => NULL, 'corpname' => NULL, 'corpid' => NULL, 'ticker' => NULL, 'allianceid' => NULL, 'alliance' => NULL);
+						$status = 'error';
+						$error = TRUE;
 
 						if($error[0] == 222)
 						{
@@ -336,27 +336,23 @@ class TEA extends TEAC
 					
 					if ($apikey)
 					{
-						
 						$error = FALSE;
-	
 						$matched = array('none', array());
-						
 						$chars = $this -> get_characters($apiuser, $apikey);
-						if ($chars != 9998)
+						if(empty($chars))
 						{
-							if(empty($chars))
-							{
-								$error = $this -> get_error($this -> data);
-								$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = '".$error[0]."', error = '".$error[1]."', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
-								if(($error[0] >= 500 && $error[0] < 600) || ($error[0] >= 900 && $error[0] < 1000)) // Api System is Down
-									return $cr;
-								else
-									$chars[] = array('name' => NULL, 'charid' => NULL, 'corpname' => NULL, 'corpid' => NULL, 'ticker' => NULL, 'allianceid' => NULL, 'alliance' => NULL);
-								$status = 'error';
-								$error = TRUE;
-							}
-							if(!empty($chars))
-							{
+							$error = $this -> get_error($this -> data);
+							$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = '".$error[0]."', error = '".$error[1]."', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+							if(($error[0] >= 500 && $error[0] < 600) || ($error[0] >= 900 && $error[0] < 1000)) // Api System is Down
+								return $cr;
+							else
+								$chars = array('name' => NULL, 'charid' => NULL, 'corpname' => NULL, 'corpid' => NULL, 'ticker' => NULL, 'allianceid' => NULL, 'alliance' => NULL);
+							$status = 'error';
+							$error = TRUE;
+						}
+						
+						if (($chars != 9998))
+						{
 							if(!$error)
 								$this -> query("UPDATE {db_prefix}tea_api SET status = 'OK', status_change = ".time()." WHERE ID_MEMBER = {int:id} AND userid = {int:userid}",
 							array('id' => $id, 'userid' => $apiuser));
@@ -919,7 +915,6 @@ class TEA extends TEAC
 								$this -> query("UPDATE {db_prefix}tea_api SET status = 'checked', matched = '".$matched."', errorid = NULL, error = NULL, status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
 							else
 								$this -> query("UPDATE {db_prefix}tea_api SET matched = '".$matched."', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
-						}
 						}
 					}
 					else
@@ -3020,12 +3015,12 @@ function postFileReady()
 		if ( !empty($_POST['tea_user_id']) || !empty($_POST['tea_user_api']) || $this -> modSettings['tea_regreq'] )
 		{
 			$chars = $this -> get_characters($_POST['tea_user_id'], $_POST['tea_user_api']);
-			if ((empty($chars)) || ($chars = 9998)) // invalid api
+			if ((empty($chars)) || ($chars == 9998)) // invalid api
 			{
 				$ret = $this -> txt['tea_regreq_error'];
 				if(empty($ret))
 					$ret = 'A Valid API is Required to Register on this Forum';
-				if ($chars = 9998)
+				if ($chars == 9998)
 					$ret = $ret . " - you are trying to register with a character that already exists in our records";
 				Return $ret;
 			}
