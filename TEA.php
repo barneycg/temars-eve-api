@@ -23,7 +23,7 @@ class TEA extends TEAC
 		$this -> smcFunc = &$smcFunc;
 		$this -> settings = &$settings;
 
-		$this -> version = "1.3.0 r173";
+		$this -> version = "1.3.0 r174";
 
 		$permissions["tea_view_own"] = 1;
 		$permissions["tea_view_any"] = 0;
@@ -290,7 +290,7 @@ class TEA extends TEAC
 				$cr['main'] = 'Not Monitored';
 			}
 			$apiusers=array();
-			$apiuserstmp = $this -> smcFunc['db_query']('', "SELECT userid, api, status FROM {db_prefix}tea_api WHERE ID_MEMBER = {int:id} AND (errorid is NULL or errorid != 203)", array('id' => $id));
+			$apiuserstmp = $this -> smcFunc['db_query']('', "SELECT userid, api, status FROM {db_prefix}tea_api WHERE ID_MEMBER = {int:id} AND (errorid is NULL or (errorid != 203 and errorid != 9997))", array('id' => $id));
 			$apiusers = $this -> select($apiuserstmp);
 			if(!empty($apiusers))
 			{
@@ -330,6 +330,10 @@ class TEA extends TEAC
 						if ($accnt!="Account")
 						{
 							$_SESSION['tea_error'][] = "<b><font color=\"red\">Api must be of Type Character and show ALL toons ;)</font></b>";
+							$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = '9997', error = 'Not All Toons', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+							$chars = $this -> get_characters($apiuser, $apikey);
+							$error = TRUE;
+							echo $id . " : " . $apiuser . " : " . "API not showing all toons\n";
 							Continue;
 						}
 					}
@@ -922,17 +926,16 @@ class TEA extends TEAC
 						//var_dump($apiuser);
 						$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = '9999', error = 'Missing API', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
 					}
-				
-					if(!$mainmatch && !$ignore)
-					{
-						// doesnt match any rule, remove group
-						$this -> query("UPDATE {db_prefix}members SET ID_GROUP = 0 WHERE ID_MEMBER = {int:id}",
-						array('id' => $id));
-						if(!$error)
-							$this -> query("UPDATE {db_prefix}tea_api SET status = 'nomatch', status_change = {int:time} WHERE ID_MEMBER = {int:id} AND status = 'OK'",
-							array('time' => time(), 'id' => $id));
-						$cr['main'] = $txt['tea_nomatch'];
-					}
+				}
+				if(!$mainmatch && !$ignore)
+				{
+					// doesnt match any rule, remove group
+					$this -> query("UPDATE {db_prefix}members SET ID_GROUP = 0 WHERE ID_MEMBER = {int:id}",
+					array('id' => $id));
+					if(!$error)
+						$this -> query("UPDATE {db_prefix}tea_api SET status = 'nomatch', status_change = {int:time} WHERE ID_MEMBER = {int:id} AND status = 'OK'",
+						array('time' => time(), 'id' => $id));
+					$cr['main'] = $txt['tea_nomatch'];
 				}
 			}
 			else
@@ -963,6 +966,7 @@ class TEA extends TEAC
 	{
 		$charlist = NULL;
 		//var_dump(get_class_methods($this));
+		$this -> query("DELETE FROM {db_prefix}tea_characters WHERE userid = '" . mysql_real_escape_string($userid) . "'");
 		$chars = $this -> get_api_characters($userid, $api);
 		if ($chars == 9999)
 		{
