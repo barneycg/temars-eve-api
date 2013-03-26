@@ -2955,7 +2955,7 @@ value_type();
 								</dl><dl class="register_form">
 									<dt>										<b>', $this -> txt['tea_charid'], ':</b></dt>
 									<dd>
-										<div id="chars"><select name="tea_char">
+										<div id="chars"><select name="tea_charid">
 											<option value="-">-</option> 
 										</select> <button type="button" onclick="javascript: getchars()">'.$this -> txt['tea_getchar'].'</button></div>
 									</dd>
