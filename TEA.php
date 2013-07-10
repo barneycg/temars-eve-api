@@ -1063,7 +1063,6 @@ class TEA extends TEAC
 		if(!empty($chars))
 		{
 			$charlist = array();
-			$this -> query("DELETE FROM {db_prefix}tea_characters WHERE userid = '" . mysql_real_escape_string($userid) . "'");
 			
 			foreach($chars as $char)
 			{
@@ -1077,12 +1076,7 @@ class TEA extends TEAC
 				}
 				$charlist[] = $char;
 				$this -> chars[$char['name']] = $char;
-				$this -> query("
-					REPLACE INTO {db_prefix}tea_characters
-						(userid, charid, name, corpid, corp, corp_ticker, allianceid, alliance, alliance_ticker)
-					VALUES 
-					('" . mysql_real_escape_string($userid) . "', '" . mysql_real_escape_string($char['charid']) . "', '" . mysql_real_escape_string($char['name']) . "', '" . mysql_real_escape_string($char['corpid']) . "', '" . mysql_real_escape_string($char['corpname']) . "', '" . mysql_real_escape_string($char['ticker']) . "', '".$char['allianceid']."', '" . mysql_real_escape_string($char['alliance']) . "', '" . mysql_real_escape_string($char['aticker']) . "')");
-			}
+				}
 		}
 		Return $charlist;
 	}
