@@ -344,6 +344,9 @@ class TEACN
 
 		if (ini_get('open_basedir') == '' && ini_get('safe_mode' == 'Off'))
 			curl_setopt ($ch, CURLOPT_FOLLOWLOCATION, 1);
+	
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
+		curl_setopt($ch, CURLOPT_TIMEOUT, 60);
 
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
@@ -361,7 +364,7 @@ class TEACN
 		$xml2 = '';
 		$xml2 = $this -> get_xml('corp', $post);
 		
-		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) )
+		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) || (stristr($xml2, "404 Not Found")) )
 		{
 				echo "API System Screwed - Can't fetch Corp Info : \n";
 				var_dump ($xml2);
@@ -374,15 +377,32 @@ class TEACN
 			$xml2[1] = explode("</description>", $xml2[1], 2);
 			$xml2 = $xml2[0].'<description>removed</description>'.$xml2[1][1];
 		}
-		try 
-		{
-			$xml = new SimpleXMLElement($xml2);
-		}
-		catch(Exception $e)
+		
+		libxml_use_internal_errors(true);
+
+
+
+                try {
+                        $xml = new SimpleXMLElement($xml2);
+
+                }
+                catch(Exception $e)
+                {
+                        echo "corp_info api returning invalid xml\n";
+                        return 9999;
+                }
+
+  		if (empty($xml))
   		{
-  			echo 'corp_info Message: ' .$e->getMessage();
-  			var_dump($xml2);
-  		}
+			foreach (libxml_get_errors() as $error) {
+        		echo 'corp_info Message: ' .$error."\n";
+   			}
+   			var_dump($xml2);
+
+    		libxml_clear_errors();
+    		return 9999;
+    	}
+		
 		if(isset($xml -> result -> corporationName))
 		{
 			$info['corpname'] = (string)$xml -> result -> corporationName;
@@ -406,21 +426,36 @@ class TEACN
 		$xml2 = '';
 		$xml2 = $this -> get_xml('standings', $post);
 		
-		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) )
+		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) || (stristr($xml2, "404 Not Found")) )
 		{
 				echo "API System Screwed - Can't Fetch Standings : \n";
 				var_dump ($xml2);
 				Return 9999;
 		}
 		
+		libxml_use_internal_errors(true);
+  		
 		try {
-			$xml = new SimpleXMLElement($xml2);
-		}
-		catch(Exception $e)
+                        $xml = new SimpleXMLElement($xml2);
+
+                }
+                catch(Exception $e)
+                {
+                        echo "standings api returning invalid xml\n";
+                        return 9999;
+                }
+
+		if (empty($xml))
   		{
-  			echo 'standings Message: ' .$e->getMessage();
-  			var_dump($xml2);
-  		}
+			foreach (libxml_get_errors() as $error) {
+        		echo 'standings Message: ' .$error."\n";
+   			}
+   			var_dump($xml2);
+
+    		libxml_clear_errors();
+    		return 9999;
+    	}
+		
 		if(!empty($xml -> result -> rowset[0]))
 		{
 			foreach($xml -> result -> rowset[0] as $s)
@@ -490,13 +525,14 @@ class TEACN
 		$post = array('keyID' => $keyid, 'vCode' => $vcode);
 		$chars = $this -> get_xml('charlist', $post);
 		
-		if( (stristr($chars, "runtime")) || (stristr($chars, "The service is unavailable")) || (!$chars) )
+		if( (stristr($chars, "runtime")) || (stristr($chars, "The service is unavailable")) || (!$chars) || (stristr($chars, "404 Not Found")) )
 		{
 				echo "API System Screwed - Can't fetch Toons : \n";
 				$this -> data = $chars;
 				var_dump ($chars);
 				Return 9999;
 		}
+		//TODO check for api error codes
 		
 		$this -> data = $chars;
 		$chars = $this -> xmlparse($chars, "result");
@@ -524,38 +560,43 @@ class TEACN
 	{
 		$skills = NULL;
 		$skilllist = getSkillArray();
+		$sp = 0;
 		$post = array();
 		$post = array('keyID' => $keyid, 'vCode' => $vcode, 'characterID' => $charid);
 		$xml2 = '';
 		$xml2 = $this -> get_xml('charsheet', $post);
 		
-		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) )
+		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) || (stristr($xml2, "404 Not Found")) )
 		{
 				echo "API System Screwed - Can't Fetch Skills : \n";
 				var_dump ($xml2);
 				Return 9999;
 		}
 		
-		try
-		{
+		libxml_use_internal_errors(true);
+		
+		try {
 			$xml = new SimpleXMLElement($xml2);
 		}
 		catch(Exception $e)
-  		{
-  			echo 'skills Message: ' .$e->getMessage();
-  			var_dump($xml2);
-  		}
-		if(!empty($xml -> result -> rowset[0]))
 		{
-			foreach($xml -> result -> rowset[0] as $skill)
-			{
-				//echo "<pre>";var_dump($skill["typeID"]); echo '<hr>';
-				$skills[strtolower($skilllist[(string)$skill["typeID"]])] = (string)$skill["level"];
-			}
+			echo "skills api returning invalid xml\n";
+			return 9999;
 		}
+
+  		if (empty($xml))
+  		{
+			foreach (libxml_get_errors() as $error) {
+        		echo 'skills Message: ' .$error."\n";
+   			}
+   			var_dump($xml2);
+
+    		libxml_clear_errors();
+    		return 9999;
+    	}
+		
 		return $skills;
 	}
-
 	function roles($id, $api, $charid)
 	{
 		$roles = NULL;
@@ -566,14 +607,35 @@ class TEACN
 		$xml2 = $this -> get_xml('charsheet', $post);
 	//	$xml = file_get_contents('me.xml');
 		
-		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) )
+		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) || (stristr($xml2, "404 Not Found")) )
 		{
 				echo "API System Screwed - Can't fetch Roles: \n";
 				var_dump ($xml2);
 				Return 9999;
 		}		
 		
-		try
+		libxml_use_internal_errors(true);
+
+                try {
+                        $xml = new SimpleXMLElement($xml2);
+                }
+                catch(Exception $e)
+                {
+                        echo "roles api returning invalid xml\n";
+                        return 9999;
+                }
+
+  		if (empty($xml))
+  		{
+			foreach (libxml_get_errors() as $error) {
+        		echo 'roles Message: ' .$error."\n";
+   			}
+   			var_dump($xml2);
+    		libxml_clear_errors();
+    		return 9999;
+    	}
+		
+		/*try
 		{
 			$xml = new SimpleXMLElement($xml2);
 		}
@@ -581,7 +643,8 @@ class TEACN
   		{
   			echo 'roles Message: ' .$e->getMessage();
   			var_dump($xml2);
-  		}
+
+  		}*/
 		$rg = array(2, 3, 4, 5);
 		foreach($rg as $i)
 		{
@@ -605,14 +668,34 @@ class TEACN
 		$xml2 = $this -> get_xml('charsheet', $post);
 			//	$xml = file_get_contents('me.xml');
 			
-		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) )
+		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) || (stristr($xml2, "404 Not Found")) )
 		{
 				echo "API System Screwed - Can't fetch Titles : \n";
 				var_dump ($xml2);
 				Return 9999;
 		}			
+		libxml_use_internal_errors(true);
+
+                try {
+                        $xml = new SimpleXMLElement($xml2);
+                }
+                catch(Exception $e)
+                {
+                        echo "titles api returning invalid xml\n";
+                        return 9999;
+                }
+
+  		if (empty($xml))
+  		{
+			foreach (libxml_get_errors() as $error) {
+        		echo 'titles Message: ' .$error."\n";
+   			}
+   			var_dump($xml2);
+    		libxml_clear_errors();
+    		return 9999;
+    	}
 			
-		try
+		/*try
 		{
 			$xml = new SimpleXMLElement($xml2);
 		}
@@ -620,7 +703,8 @@ class TEACN
   		{
   			echo 'titles Message: ' .$e->getMessage();
   			var_dump($xml2);
-  		}
+
+  		}*/
 		if (!empty($xml -> result -> rowset[6]))
 		{
 			foreach($xml -> result -> rowset[6] as $title)
@@ -647,14 +731,35 @@ class TEACN
 		$xml2 = '';
 		$xml2 = $this -> get_xml('facwar', $post);
 		
-		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) )
+		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) || (stristr($xml2, "404 Not Found")) )
 		{
 				echo "API System Screwed - Can't fetch Militia : \n";
 				var_dump ($xml2);
 				Return 9999;
 		}		
 		
-		try
+		libxml_use_internal_errors(true);
+
+                try {
+                        $xml = new SimpleXMLElement($xml2);
+                }
+                catch(Exception $e)
+                {
+                        echo "militia api returning invalid xml\n";
+                        return 9999;
+                }
+
+  		if (empty($xml))
+  		{
+			foreach (libxml_get_errors() as $error) {
+        		echo 'militia Message: ' .$error."\n";
+   			}
+   			var_dump($xml2);
+    		libxml_clear_errors();
+    		return 9999;
+    	}
+		
+		/*try
 		{
 			$xml = new SimpleXMLElement($xml2);
 		}
@@ -662,7 +767,8 @@ class TEACN
   		{
   			echo 'militia Message: ' .$e->getMessage();
   			var_dump($xml2);
-  		}
+
+  		}*/
 		$faction = $xml -> result -> factionName;
 		return $faction;
 	}
@@ -930,6 +1036,9 @@ class TEACO
 
 		//curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
+		curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
 		$data = curl_exec($ch);
@@ -1073,8 +1182,13 @@ class TEACO
 			{
 				//	$chars[] = array('name' => $name, 'charid' => $charid, 'corpname' => $corpname, 'corpid' => $corpid);
 				$corpinfo = $this -> corp_info($char['corpid']); // corpname, ticker, allianceid, alliance, aticker
-				$char = array_merge($char, $corpinfo);
-				$charlist[] = $char;
+				
+				if ($corpinfo != 9999)
+				{	$char = array_merge($char, $corpinfo);
+					$charlist[] = $char;
+				}
+				else
+					return 9999;
 			}
 		}
 		Return $charlist;
@@ -1088,7 +1202,22 @@ class TEACO
 		$post = array('userID' => $id, 'apiKey' => $api, 'characterID' => $charid);
 		$xml2 = '';
 		$xml2 = $this -> get_xml('charsheet', $post);
-		try
+		
+		libxml_use_internal_errors(true);
+		
+		$xml = new SimpleXMLElement($xml2);
+		  			
+  		if (empty($xml))
+  		{
+			foreach (libxml_get_errors() as $error) {
+        		echo 'skills Message: ' .$error."\n";
+   			}
+   			var_dump($xml2);
+    		libxml_clear_errors();
+    		return 9999;
+    	}		
+		
+		/*try
 		{
 			$xml = new SimpleXMLElement($xml2);
 		}
@@ -1096,8 +1225,8 @@ class TEACO
   		{
   			echo 'skills Message: ' .$e->getMessage();
   			var_dump($xml2);
-  		}
 
+  		}*/
 		if(!empty($xml -> result -> rowset[0]))
 		{
 			foreach($xml -> result -> rowset[0] as $skill)
@@ -1117,7 +1246,22 @@ class TEACO
 		$xml2 = '';
 		$xml2 = $this -> get_xml('charsheet', $post);
 	//	$xml = file_get_contents('me.xml');
-		try
+	
+		libxml_use_internal_errors(true);
+		
+		$xml = new SimpleXMLElement($xml2);
+		  			
+  		if (empty($xml))
+  		{
+			foreach (libxml_get_errors() as $error) {
+        		echo 'roles Message: ' .$error."\n";
+   			}
+   			var_dump($xml2);
+    		libxml_clear_errors();
+    		return 9999;
+    	}
+	
+		/*try
 		{
 			$xml = new SimpleXMLElement($xml2);
 		}
@@ -1125,7 +1269,8 @@ class TEACO
   		{
   			echo 'roles Message: ' .$e->getMessage();
   			var_dump($xml2);
-  		}
+
+  		}*/
 
 		$rg = array(2, 3, 4, 5);
 		foreach($rg as $i)
@@ -1149,7 +1294,22 @@ class TEACO
 		$xml2 = '';
 		$xml2 = $this -> get_xml('charsheet', $post);
 	//	$xml = file_get_contents('me.xml');
-		try
+		
+		libxml_use_internal_errors(true);
+		
+		$xml = new SimpleXMLElement($xml2);
+		  			
+  		if (empty($xml))
+  		{
+			foreach (libxml_get_errors() as $error) {
+        		echo 'titles Message: ' .$error."\n";
+   			}
+   			var_dump($xml2);
+    		libxml_clear_errors();
+    		return 9999;
+    	}
+		
+		/*try
 		{
 			$xml = new SimpleXMLElement($xml2);
 		}
@@ -1157,7 +1317,8 @@ class TEACO
   		{
   			echo 'titles Message: ' .$e->getMessage();
   			var_dump($xml2);
-  		}
+
+  		}*/
 
 		if(!empty($xml -> result -> rowset[6]))
 		{
@@ -1175,7 +1336,22 @@ class TEACO
 		$post = array('userID' => $id, 'apiKey' => $api, 'characterID' => $charid);
 		$xml2 = '';
 		$xml2 = $this -> get_xml('facwar', $post);
-		try
+
+		libxml_use_internal_errors(true);
+		
+		$xml = new SimpleXMLElement($xml2);
+		  			
+  		if (empty($xml))
+  		{
+			foreach (libxml_get_errors() as $error) {
+        		echo 'militia Message: ' .$error."\n";
+   			}
+   			var_dump($xml2);
+    		libxml_clear_errors();
+    		return 9999;
+    	}		
+		
+		/*try
 		{
 			$xml = new SimpleXMLElement($xml2);
 		}
@@ -1183,7 +1359,8 @@ class TEACO
   		{
   			echo 'militia Message: ' .$e->getMessage();
   			var_dump($xml2);
-  		}
+
+  		}*/
 
 		$faction = $xml -> result -> factionName;
 		return $faction;
