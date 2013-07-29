@@ -23,7 +23,7 @@ class TEA extends TEAC
 		$this -> smcFunc = &$smcFunc;
 		$this -> settings = &$settings;
 
-		$this -> version = "1.3.0 r176";
+		$this -> version = "1.3.0 r177";
 
 		$permissions["tea_view_own"] = 1;
 		$permissions["tea_view_any"] = 0;
@@ -1169,7 +1169,7 @@ class TEA extends TEAC
 
 	function get_acc_chars($userid)
 	{
-		$charlist = NULL;
+		$charlist = array();
 		$chars = $this -> smcFunc['db_query']('', "SELECT charid, name, corp_ticker, corp, alliance, alliance_ticker FROM {db_prefix}tea_characters WHERE userid = {int:id}", array('id' => $userid));
 		$chars = $this -> select($chars);
 		if(!empty($chars))
@@ -1554,7 +1554,7 @@ class TEA extends TEAC
 		$info = array('smfv' => $this -> modSettings['smfVersion'],
 					'teav' => $this -> version,
 					'url' => $_SERVER['HTTP_HOST']);
-		$latestv = $this -> get_site('http://tea.temar.me/version.php', $info);
+		/*$latestv = $this -> get_site('http://tea.temar.me/version.php', $info);
 		$latestv = explode("#", $latestv, 2);
 		if(version_compare($latestv[0], $this -> version) > 0)
 		{
@@ -1593,8 +1593,20 @@ class TEA extends TEAC
 			'<dt>1.2.1</dt>',
 			'<dt>- Custom Name Format options Changed, Check Settings Page</dt>',
 			'<dt>- SMF Group Monitor List System Changed, Check Rules Page</dt>',
+		);*/
+		$config_vars = array(
+			'</form><dt>Your '.$this -> txt['tea_version'].': '.$this -> version.'</dt>',
+			'',
+			'<dt>Important Update Notes:</dt>',
+			'<dt>1.3<br>- Cron files are now in forum_folder/TEA/</dt>',
+			'<dt>1.3<br>- New API Supported, blocking new OLD apis being added but current stored still work</dt>',
+			'<dt></dt>',
+			'<dt>1.2.1</dt>',
+			'<dt>- Custom Name Format options Changed, Check Settings Page</dt>',
+			'<dt>- SMF Group Monitor List System Changed, Check Rules Page</dt>',
 		);
-
+		
+		$this -> context['post_url'] = $scripturl . '?action=admin;area=info;save';
 		$this -> context['settings_save_dont_show'] = TRUE;
 
 		prepareDBSettingContext($config_vars);
@@ -1602,6 +1614,7 @@ class TEA extends TEAC
 
 	function settings_settings($scripturl)
 	{
+		$charid = 0;
 		$atime = $this -> alliance_list(FALSE);
 		if($atime)
 			$atime = gmdate("G:i D d M y", $atime).' (GMT)';
@@ -1609,13 +1622,13 @@ class TEA extends TEAC
 			$atime = 'Never';
 		if (isset($_GET['save']))
 		{
-			$charid = $_POST["tea_charid"];
+			//$charid = $_POST["tea_charid"];
 			$userid = $_POST["tea_apiid"];
 			$api = $_POST["tea_vcode"];
 		}
 		else
 		{
-			$charid = $this -> modSettings["tea_charid"];
+			//$charid = $this -> modSettings["tea_charid"];
 			$userid = $this -> modSettings["tea_apiid"];
 			$api = $this -> modSettings["tea_vcode"];
 		}
@@ -2997,6 +3010,7 @@ value_type();
 				}
 				else
 					$aname = 'none';
+					
 				$teainfo[] = array(
 				"userid" => $u[0],
 				"api" => $u[1],
@@ -3391,7 +3405,7 @@ function template_edittea()
 				"userid" => '',
 				"api" => '',
 			//	"msg" => $msg,
-				'charnames' => '',
+				'charnames' => array(),
 				'status' => '',
 				'mainrule' => '',
 				'aditrules' => '',
