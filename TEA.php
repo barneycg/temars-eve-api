@@ -23,7 +23,7 @@ class TEA extends TEAC
 		$this -> smcFunc = &$smcFunc;
 		$this -> settings = &$settings;
 
-		$this -> version = "1.3.0 r177";
+		$this -> version = "1.3.0 r178";
 
 		$permissions["tea_view_own"] = 1;
 		$permissions["tea_view_any"] = 0;
@@ -1048,7 +1048,7 @@ class TEA extends TEAC
 		Return $charlist;
 	}
 	
-	function get_characters_reg_check($userid, $api)
+	function get_characters_reg_check($userid, $api, $verify=TRUE)
 	{
 		$charlist = NULL;
 		//var_dump(get_class_methods($this));
@@ -1068,9 +1068,9 @@ class TEA extends TEAC
 			{
 				$user = $this -> smcFunc['db_query']('', "SELECT * FROM {db_prefix}tea_characters WHERE charid = ".mysql_real_escape_string($char['charid'])." and userid != ".mysql_real_escape_string($userid));
                         	$user = $this -> select($user);
-				if (!empty($user))
+				if (!empty($user) && $verify)
 				{
-					$_SESSION['tea_error'][] = "<b><font color=\"red\">Character already listed with a different api key</font></b> - ".$user[0][2];
+					$_SESSION['tea_error'][] = "<b><font color=\"red\">Character already listed with a different api key</font></b> - ".$user[0][2].":".$userid;
 					$this -> query("UPDATE {db_prefix}tea_api SET errorid=9998,error='Toons exist ".$user[0][1]."' WHERE userid = " . mysql_real_escape_string($userid). " and api = '" . mysql_real_escape_string($api)."'");
 					return 9998;
 				}
@@ -1615,7 +1615,7 @@ class TEA extends TEAC
 	function settings_settings($scripturl)
 	{
 		$charid = 0;
-		$atime = $this -> alliance_list(FALSE);
+		$atime = $this -> alliance_list();
 		if($atime)
 			$atime = gmdate("G:i D d M y", $atime).' (GMT)';
 		else
@@ -1632,7 +1632,7 @@ class TEA extends TEAC
 			$userid = $this -> modSettings["tea_apiid"];
 			$api = $this -> modSettings["tea_vcode"];
 		}
-		$chars = $this -> get_characters($userid, $api);
+		$chars = $this -> get_characters_reg_check($userid, $api, FALSE);
 
 		$charlist = array();
 		if((!empty($chars)) && ($chars != 9998))
@@ -1650,6 +1650,10 @@ class TEA extends TEAC
 		$blues = NULL;
 		$reds = NULL;
 		$time = FALSE;
+		if ($userid && $api)
+		{
+			$this -> get_standings();
+		}
 		$file = $this -> sourcedir."/../TEA/eve_standings.php";
 		if(file_exists($file))
 			require($file);
