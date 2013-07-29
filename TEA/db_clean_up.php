@@ -23,8 +23,8 @@ if (!empty($data))
 {
 	foreach ($data as $userid)
 	{
-		echo "deleting orphaned api key : ".$userid[0]."\n";
-		$smcFunc['db_query']('', "DELETE FROM {db_prefix}tea_api where userid = {int:userid}",array('userid'=>$userid[0]));
+		echo "deleting orphaned api key : ".$userid[1]."\n";
+		$smcFunc['db_query']('', "DELETE FROM {db_prefix}tea_api where userid = {int:userid}",array('userid'=>$userid[1]));
 	}
 }
 
