@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<!DOCTYPE modification SYSTEM "http://www.simplemachines.org/xml/modification">
+<modification xmlns="http://www.simplemachines.org/xml/modification" xmlns:smf="http://www.simplemachines.org/">
+	<id>temar:TEA</id>
+	<version>1.00</version>
+
+	<file name="$sourcedir/ScheduledTasks.php">
+
+		<operation>
+			<search position="end"/>
+			<add><![CDATA[
+function scheduled_TEA()
+{
+	Global $sourcedir,$tea;
+
+	require_once($sourcedir."/TEA.php");
+	$tea -> update_api(FALSE);
+
+	return true;
+}]]></add>
+		</operation>
+	</file>
+        <file name="$languagedir/ManageScheduledTasks.english.php">
+                <operation>
+                        <search position="end" />
+                        <add><![CDATA[
+$txt['scheduled_task_TEA'] = 'Poll Eveapi API for forum members';
+$txt['scheduled_task_desc_TEA'] = 'Connects to the Eve-online api and updates forum member details.';
+]]></add>
+		</operation>
+	</file>
+</modification>
