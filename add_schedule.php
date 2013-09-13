@@ -17,7 +17,58 @@ $smcFunc['db_insert']('replace',
                 'task' => 'string',
                 ),
                 array(
-                0, 0, 0, 2, "m", 1, "TEA"
+                0, 0, 0, 2, "m", 1, "TEA_cron"
+                ),
+                array('task')
+        );
+
+$smcFunc['db_insert']('replace',
+        '{db_prefix}scheduled_tasks',
+                array(
+                'id_task' => 'int',
+                'next_time' => 'int',
+                'time_offset' => 'int',
+                'time_regularity' => 'int',
+                'time_unit' => 'string',
+                'disabled' => 'int',
+                'task' => 'string',
+                ),
+                array(
+                0, 0, 0, 1, "h", 1, "TEA_jabber_cron"
+                ),
+                array('task')
+        );
+
+$smcFunc['db_insert']('replace',
+        '{db_prefix}scheduled_tasks',
+                array(
+                'id_task' => 'int',
+                'next_time' => 'int',
+                'time_offset' => 'int',
+                'time_regularity' => 'int',
+                'time_unit' => 'string',
+                'disabled' => 'int',
+                'task' => 'string',
+                ),
+                array(
+                0, 0, 0, 1, "h", 1, "TEA_ts_access_cron"
+                ),
+                array('task')
+        );
+
+$smcFunc['db_insert']('replace',
+        '{db_prefix}scheduled_tasks',
+                array(
+                'id_task' => 'int',
+                'next_time' => 'int',
+                'time_offset' => 'int',
+                'time_regularity' => 'int',
+                'time_unit' => 'string',
+                'disabled' => 'int',
+                'task' => 'string',
+                ),
+                array(
+                0, 0, 0, 1, "h", 1, "TEA_ts_names_cron"
                 ),
                 array('task')
         );

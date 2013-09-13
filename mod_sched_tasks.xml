@@ -9,7 +9,7 @@
 		<operation>
 			<search position="end"/>
 			<add><![CDATA[
-function scheduled_TEA()
+function scheduled_TEA_cron()
 {
 	Global $sourcedir,$tea;
 
@@ -17,15 +17,52 @@ function scheduled_TEA()
 	$tea -> update_api(FALSE);
 
 	return true;
-}]]></add>
+}
+
+function scheduled_TEA_jabber_cron()
+{
+	Global $sourcedir,$teaj;
+
+	require_once($sourcedir."/TEA.php");
+	$teaj -> check_access();
+
+	return true;
+}
+
+function scheduled_TEA_ts_access_cron()
+{
+	Global $sourcedir,$teats;
+
+	require_once($sourcedir."/TEA.php");
+	$teats -> check_access();
+
+	return true;
+}
+
+function scheduled_TEA_ts_names_cron()
+{
+	Global $sourcedir,$teats;
+
+	require_once($sourcedir."/TEA.php");
+	$teats -> check_names();
+
+	return true;
+}
+]]></add>
 		</operation>
 	</file>
         <file name="$languagedir/ManageScheduledTasks.english.php">
                 <operation>
                         <search position="end" />
                         <add><![CDATA[
-$txt['scheduled_task_TEA'] = 'Poll Eveapi API for forum members';
-$txt['scheduled_task_desc_TEA'] = 'Connects to the Eve-online api and updates forum member details.';
+$txt['scheduled_task_TEA_cron'] = 'Poll Eveapi API for forum members';
+$txt['scheduled_task_desc_TEA_cron'] = 'Connects to the Eve-online api and updates forum member details.';
+$txt['scheduled_task_TEA_jabber_cron'] = 'Update Jabber for Eve forum members';
+$txt['scheduled_task_desc_TEA_jabber_cron'] = 'Syncronises forum groups to Openfire.';
+$txt['scheduled_task_TEA_ts_access_cron'] = 'Update TS for Eve forum members';
+$txt['scheduled_task_desc_TEA_ts_access_cron'] = 'Syncronises forum groups to TS.';
+$txt['scheduled_task_TEA_ts_names_cron'] = 'Kick unaurthorised Eve members from TS';
+$txt['scheduled_task_desc_TEA_ts_names_cron'] = 'Kick unaurthorised Eve members from TS.';
 ]]></add>
 		</operation>
 	</file>
