@@ -157,6 +157,8 @@ class TEA_TS extends TEAC
 				echo("[ERROR] " . $e->getMessage() . "\n");
 			}
 		}
+		else
+			$gl=array();
 
 		$cgq = $this -> smcFunc['db_query']('', "SELECT id, value FROM {db_prefix}tea_ts_groups ORDER BY id");
 		$cgq = $this -> tea -> select($cgq);
@@ -167,20 +169,26 @@ class TEA_TS extends TEAC
 		}
 		$groupcheck = '<dt>'.$this -> txt['tea_groupmon'].'
 		<table><tr><td>Name</td><td>Checked</td></tr>';
-		foreach($gl as $id => $g)
+		if ($this -> modSettings["tea_ts_enable"])
 		{
-			if($id != '0')
+			foreach($gl as $id => $g)
 			{
-				$check = '';
-				if($cg[$id] == 1)
-					$check = 'checked';
-				$groupcheck .= '<tr><td>'.$g.'</td><td><input type="checkbox" name="group['.$id.']" value="main" '.$check.' /></td><td></tr>';
+				if($id != '0')
+				{
+					$check = '';
+					if($cg[$id] == 1)
+						$check = 'checked';
+					$groupcheck .= '<tr><td>'.$g.'</td><td><input type="checkbox" name="group['.$id.']" value="main" '.$check.' /></td><td></tr>';
+				}
 			}
 		}
 		$groupcheck .= '<tr><td>
 			</td></tr></table></dt>';
 
-
+		if (array_key_exists('tea_ts_info',$this -> modSettings))
+			$ts_info = $this -> modSettings['tea_ts_info'];
+		else
+			$ts_info = '';
 		$config_vars = array(
 			'</form>
 			<form name="miniform" method="post" action="">
@@ -200,7 +208,7 @@ class TEA_TS extends TEAC
 				array('text', 'tea_ts_password', 15),
 				array('text', 'tea_ts_nf', 15),
 				'<dt>TeamSpeak Info (HTML) will display on TS area of profile</dt>',
-				'<dt><textarea name="tea_ts_info" cols=120 rows=6>'.$this -> modSettings['tea_ts_info'].'</textarea></dt>',
+				'<dt><textarea name="tea_ts_info" cols=120 rows=6>'.$ts_info.'</textarea></dt>',
 				'',
 				$this -> txt['tea_ts_db_need'],
 				array('text', 'tea_ts_db_host', 15),
@@ -275,48 +283,51 @@ function move(id, value)
 		//		unset($_POST['tea_useapiabove']);
 		//	}
 		//	if(!empty($_POST['tea_ts_delrule']
-			if($_POST['minitype'] == 'delrule')
+			if (array_key_exists('minitype',$_POST))
 			{
-				if(!is_numeric($_POST['value']))
-					die("delete value must be number");
-				$this -> tea -> query("DELETE FROM {db_prefix}tea_ts_rules WHERE id = ".$_POST['value']);
-				redirectexit('action=admin;area=tea;sa=ts');
-			}
-			elseif($_POST['minitype'] == 'up' || $_POST['minitype'] == 'down')
-			{
-				$id = $_POST['value'];
-				if(!is_numeric($id))
-					die("move id must be number");
-				$rules = $this -> smcFunc['db_query']('', "SELECT id FROM {db_prefix}tea_ts_rules ORDER BY id");
-				$rules = $this -> tea -> select($rules);
-				if(!empty($rules))
+				if($_POST['minitype'] == 'delrule')
 				{
-				//	foreach($rules as $rule)
-				//	{
-				//		$rl[$rule[1]][$rule[0]] = $rule[0];
-				//		if($rule[0] == $id)
-				//			$main = $rule[1];
-				//	}
-				//	if(isset($main))
-				//	{
-				//		$rules = $rl[$main];
-				//		sort($rules);
-					foreach($rules as $i => $rule)
+					if(!is_numeric($_POST['value']))
+						die("delete value must be number");
+					$this -> tea -> query("DELETE FROM {db_prefix}tea_ts_rules WHERE id = ".$_POST['value']);
+					redirectexit('action=admin;area=tea;sa=ts');
+				}
+				elseif($_POST['minitype'] == 'up' || $_POST['minitype'] == 'down')
+				{
+					$id = $_POST['value'];
+					if(!is_numeric($id))
+						die("move id must be number");
+					$rules = $this -> smcFunc['db_query']('', "SELECT id FROM {db_prefix}tea_ts_rules ORDER BY id");
+					$rules = $this -> tea -> select($rules);
+					if(!empty($rules))
 					{
-						if($rule[0] == $id)
+					//	foreach($rules as $rule)
+					//	{
+					//		$rl[$rule[1]][$rule[0]] = $rule[0];
+					//		if($rule[0] == $id)
+					//			$main = $rule[1];
+					//	}
+					//	if(isset($main))
+					//	{
+					//		$rules = $rl[$main];
+					//		sort($rules);
+						foreach($rules as $i => $rule)
 						{
-							if($_POST['minitype'] == 'up')
-								$move = $rules[$i-1][0];
-							elseif($_POST['minitype'] == 'down')
-								$move = $rules[$i+1][0];
-							$this -> tea -> query("UPDATE {db_prefix}tea_ts_rules SET id = -1 WHERE id = ".$move);
-							$this -> tea -> query("UPDATE {db_prefix}tea_ts_rules SET id = $move WHERE id = ".$id);
-							$this -> tea -> query("UPDATE {db_prefix}tea_ts_rules SET id = $id WHERE id = -1");
-							Break;
+							if($rule[0] == $id)
+							{
+								if($_POST['minitype'] == 'up')
+									$move = $rules[$i-1][0];
+								elseif($_POST['minitype'] == 'down')
+									$move = $rules[$i+1][0];
+								$this -> tea -> query("UPDATE {db_prefix}tea_ts_rules SET id = -1 WHERE id = ".$move);
+								$this -> tea -> query("UPDATE {db_prefix}tea_ts_rules SET id = $move WHERE id = ".$id);
+								$this -> tea -> query("UPDATE {db_prefix}tea_ts_rules SET id = $id WHERE id = -1");
+								Break;
+							}
 						}
 					}
+					redirectexit('action=admin;area=tea;sa=ts');
 				}
-				redirectexit('action=admin;area=tea;sa=ts');
 			}
 			if(isset($_POST['group']))
 			{

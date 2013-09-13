@@ -160,6 +160,7 @@ class TEA_Jabber extends TEAC
 			foreach($cgq as $cgqs)
 				$cg[$cgqs[0]] = $cgqs[1];
 		}
+		
 		$groupcheck = '<dt>'.$this -> txt['tea_groupmon'].'
 		<table><tr><td>Name</td><td>Checked</td></tr>';
 		foreach($gl as $id => $g)
@@ -167,7 +168,7 @@ class TEA_Jabber extends TEAC
 			if($id != '0')
 			{
 				$check = '';
-				if($cg[$id] == 1)
+				if (array_key_exists($id,$cg) && ($cg[$id] == 1))
 					$check = 'checked';
 				$groupcheck .= '<tr><td>'.$g.'</td><td><input type="checkbox" name="group['.$id.']" value="main" '.$check.' /></td><td></tr>';
 			}

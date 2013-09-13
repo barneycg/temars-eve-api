@@ -29,10 +29,16 @@
 			$teaj -> tea_set_jabber($memID);
 			redirectexit('action=profile;area=tea;sa=jabber;updated;u='.$memID);
 		}
+		elseif($_GET['sa'] == 'api')
+		{
+			$teaj -> tea_set_api($memID);
+			redirectexit('action=profile;area=tea;sa=api;updated;u='.$memID);
+		}
 	}
 	elseif($_GET['area'] == 'tea')
 	{
 		$tea -> tea_set_api($memID);
+		redirectexit('action=profile;area=tea;sa=api;updated;u='.$memID);
 	}
 
 	// Here's where we sort out all the 'other' values...]]></add>

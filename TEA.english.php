@@ -2,8 +2,8 @@
 $txt['tea_tea'] = 'Temars Eve Api';
 $txt['tea'] = 'Temars Eve Api';
 $txt['tea_eveapi'] = 'Eve Api';
-$txt['tea_userid'] = 'ID from API Page <A href="https://support.eveonline.com/api/Key">here</a>';
-$txt['tea_api'] = 'Verification Code from API Page <A href="https://support.eveonline.com/api/Key">here</a>';
+$txt['tea_userid'] = 'ID from API Page <A href="http://community.eveonline.com/support/api-key/CreatePredefined?accessMask=25165896" target=_blank>here</a>';
+$txt['tea_api'] = 'Verification Code from API Page <A href="http://community.eveonline.com/support/api-key/CreatePredefined?accessMask=25165896" target=_blank>here</a>';
 $txt['tea_charid'] = 'Character to use';
 $txt['tea_status'] = 'Status';
 $txt['tea_characters'] = 'Characters';
@@ -20,6 +20,7 @@ $txt['tea_info'] = "Info";
 $txt['tea_rules'] = "Rules";
 $txt['tea_ts'] = "TeamSpeak";
 $txt['tea_jabber'] = "Jabber";
+$txt['tea_corp_key'] = 'Corp Key';
 $txt['tea_checks'] = "Checks";
 $txt['tea_settings_message'] = "The API info needed here is to get Standings<Br>A Full API Key is Required for Standings";
 $txt['tea_enable'] = 'Enable Temars Eve Api Mod';
@@ -130,6 +131,10 @@ $txt['tea_rulesinfo'] = '* Rules for Main Group are checked in Order of ID
 $txt['tea_jabber_userinfo'] = 'This section allows you to Gain Access to Jabber';
 $txt['tea_jabber_description'] = 'This section allows you to Gain Access to Jabber';
 $txt['tea_jabber_disabled'] = 'Temars Eve Api Mod Jabber Area is Disabled.';
+
+//Corp Keys Profile
+$txt['tea_corp_userinfo'] = 'This section allows you to set Corp Keys';
+$txt['tea_corp_description'] = 'This section allows you to set Corp Keys';
 
 $txt['tea_groupmon'] = 'Groups to Monitor and Remove';
 
