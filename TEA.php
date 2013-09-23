@@ -23,7 +23,7 @@ class TEA extends TEAC
 		$this -> smcFunc = &$smcFunc;
 		$this -> settings = &$settings;
 
-		$this -> version = "1.3.1 r2";
+		$this -> version = "1.3.1 r3";
 
 		$permissions["tea_view_own"] = 1;
 		$permissions["tea_view_any"] = 0;
@@ -1684,6 +1684,9 @@ class TEA extends TEAC
 			$userid = $this -> modSettings["tea_apiid"];
 			$api = $this -> modSettings["tea_vcode"];
 		}
+<<<<<<< HEAD
+		
+=======
 		$chars = $this -> get_characters_reg_check($userid, $api, FALSE);
 
 		$charlist = array();
@@ -1699,6 +1702,7 @@ class TEA extends TEAC
 				}
 			}
 		}
+>>>>>>> b1453f62ebc8d0bed76181e596df4b7726fa512b
 		$blues = NULL;
 		$reds = NULL;
 		$time = FALSE;
@@ -1731,11 +1735,17 @@ class TEA extends TEAC
 			<form action="'.$scripturl.'?action=admin;area=tea;sa=settings;save" method="post" accept-charset="ISO-8859-1" name="tea_settings">',
 			'<dt>'.$this -> txt['tea_version'].': '.$this -> version.'</dt>',
 			'',
+<<<<<<< HEAD
+				array('check', 'tea_enable'),
+			'',
+			'<dt>'.$this -> txt['tea_settings_message'].'</dt>',
+=======
 				// enable?
 				array('check', 'tea_enable'),
 			'',
 			'<dt>'.$this -> txt['tea_settings_message'].'</dt>',
 				// api info
+>>>>>>> b1453f62ebc8d0bed76181e596df4b7726fa512b
 				array('int', 'tea_apiid', 10),
 				array('text', 'tea_vcode', 64),
 			'<dt>'.$this -> txt['tea_standings_updated'].': '.$time.'</dt>',
@@ -1748,15 +1758,23 @@ class TEA extends TEAC
 				array('check', 'tea_avatar_enabled'),
 				array('check', 'tea_avatar_locked'),
 				array('select', 'tea_avatar_size', array(32 => '32', 64 => '64', 128 => '128', 256 => '256')),
+<<<<<<< HEAD
+=======
 			//	array('int', 'tea_corpid', 10),
 			//	array('int', 'tea_allianceid', 10),
 			//	array('check', 'tea_useapiabove'),
+>>>>>>> b1453f62ebc8d0bed76181e596df4b7726fa512b
 				array('check', 'tea_custom_name'),
 				array('text', 'tea_nf', 15),
 				array('check', 'tea_custom_title'),
 				array('text', 'tea_tf', 15),
 			'',
 			'<dt>'.$this -> txt['tea_group_settings'].'</dt>',
+<<<<<<< HEAD
+				array('select', 'tea_groupass_unknown', $groups),
+			'',
+				array('text', 'tea_api_server', 40),
+=======
 			//	array('select', 'tea_groupass_red', $groups),
 			//	array('select', 'tea_groupass_corp', $groups),
 			//	array('select', 'tea_groupass_alliance', $groups),
@@ -1767,17 +1785,21 @@ class TEA extends TEAC
 				array('text', 'tea_api_server', 40),
 				// Who's online.
 		//		array('check', 'who_enabled'),
+>>>>>>> b1453f62ebc8d0bed76181e596df4b7726fa512b
 		);
 
 		// Saving?
 		if (isset($_GET['save']))
 		{
+<<<<<<< HEAD
+=======
 		//	if(isset($_POST['tea_useapiabove']))
 		//	{
 		//		$_POST['tea_corpid'] = $corp;
 		//		$_POST['tea_allianceid'] = $alliance;
 		//		unset($_POST['tea_useapiabove']);
 		//	}
+>>>>>>> b1453f62ebc8d0bed76181e596df4b7726fa512b
 			$config_vars[] = array('select', 'tea_charid', $charlist);
 			saveDBSettings($config_vars);
 			redirectexit('action=admin;area=tea;sa=settings');
@@ -1787,8 +1809,11 @@ class TEA extends TEAC
 		}
 
 		$this -> context['post_url'] = $scripturl . '?action=admin;area=tea;save';
+<<<<<<< HEAD
+=======
 	//	$context['settings_title'] = $txt['tea_tea'];
 	//	$context['settings_message'] = $txt['tea_settings_message'];
+>>>>>>> b1453f62ebc8d0bed76181e596df4b7726fa512b
 
 		prepareDBSettingContext($config_vars);
 	}
