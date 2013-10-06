@@ -23,7 +23,7 @@ class TEA extends TEAC
 		$this -> smcFunc = &$smcFunc;
 		$this -> settings = &$settings;
 
-		$this -> version = "1.3.1 r3";
+		$this -> version = "1.3.1 r4";
 
 		$permissions["tea_view_own"] = 1;
 		$permissions["tea_view_any"] = 0;
@@ -100,7 +100,7 @@ class TEA extends TEAC
 			}
 		}
 
-		$dsets['tea_api_server'] = $this -> modSettings['tea_api_server'];//'https://api.eveonline.com';
+		$dsets['tea_api_server'] = 'https://api.eveonline.com';
 		$dsets['tea_lastpull'] = 0;
 		$dsets['tea_nf'] = '[#ct#] #name#';
 		$dsets['tea_tf'] = '#ct#';
@@ -1354,12 +1354,17 @@ class TEA extends TEAC
 		else
 		{
 			if(!empty($users))
+			{
 				$this -> lastid = $users[count($users)-1][0];
+				$lastid = $this -> lastid;
+				$lastid = 0;
+				//$this -> lastid = 0;
+				if (!isset($_GET['update']))
+					echo "Reset lastid to Zero\n";
+			}
 			else
 				$this -> lastid = $lastid;
-			$lastid = 0;
 
-			echo "reset lastid to zero\n";
 			$next = time() + 60;
 		}
 		$this -> smcFunc['db_query']('', "
@@ -1684,25 +1689,6 @@ class TEA extends TEAC
 			$userid = $this -> modSettings["tea_apiid"];
 			$api = $this -> modSettings["tea_vcode"];
 		}
-<<<<<<< HEAD
-		
-=======
-		$chars = $this -> get_characters_reg_check($userid, $api, FALSE);
-
-		$charlist = array();
-		if((!empty($chars)) && ($chars != 9998))
-		{
-			foreach($chars as $char)
-			{
-				$charlist[$char['charid']] = $char['name'];
-				if($charid == $char['charid'])
-				{
-					$corp = $char['corpid'];
-					$alliance = $char['allianceid'];
-				}
-			}
-		}
->>>>>>> b1453f62ebc8d0bed76181e596df4b7726fa512b
 		$blues = NULL;
 		$reds = NULL;
 		$time = FALSE;
@@ -1735,17 +1721,11 @@ class TEA extends TEAC
 			<form action="'.$scripturl.'?action=admin;area=tea;sa=settings;save" method="post" accept-charset="ISO-8859-1" name="tea_settings">',
 			'<dt>'.$this -> txt['tea_version'].': '.$this -> version.'</dt>',
 			'',
-<<<<<<< HEAD
-				array('check', 'tea_enable'),
-			'',
-			'<dt>'.$this -> txt['tea_settings_message'].'</dt>',
-=======
 				// enable?
 				array('check', 'tea_enable'),
 			'',
 			'<dt>'.$this -> txt['tea_settings_message'].'</dt>',
 				// api info
->>>>>>> b1453f62ebc8d0bed76181e596df4b7726fa512b
 				array('int', 'tea_apiid', 10),
 				array('text', 'tea_vcode', 64),
 			'<dt>'.$this -> txt['tea_standings_updated'].': '.$time.'</dt>',
@@ -1758,48 +1738,20 @@ class TEA extends TEAC
 				array('check', 'tea_avatar_enabled'),
 				array('check', 'tea_avatar_locked'),
 				array('select', 'tea_avatar_size', array(32 => '32', 64 => '64', 128 => '128', 256 => '256')),
-<<<<<<< HEAD
-=======
-			//	array('int', 'tea_corpid', 10),
-			//	array('int', 'tea_allianceid', 10),
-			//	array('check', 'tea_useapiabove'),
->>>>>>> b1453f62ebc8d0bed76181e596df4b7726fa512b
 				array('check', 'tea_custom_name'),
 				array('text', 'tea_nf', 15),
 				array('check', 'tea_custom_title'),
 				array('text', 'tea_tf', 15),
 			'',
 			'<dt>'.$this -> txt['tea_group_settings'].'</dt>',
-<<<<<<< HEAD
 				array('select', 'tea_groupass_unknown', $groups),
 			'',
 				array('text', 'tea_api_server', 40),
-=======
-			//	array('select', 'tea_groupass_red', $groups),
-			//	array('select', 'tea_groupass_corp', $groups),
-			//	array('select', 'tea_groupass_alliance', $groups),
-			//	array('select', 'tea_groupass_blue', $groups),
-			//	array('select', 'tea_groupass_neut', $groups),
-				array('select', 'tea_groupass_unknown', $groups),
-			'',
-				array('text', 'tea_api_server', 40),
-				// Who's online.
-		//		array('check', 'who_enabled'),
->>>>>>> b1453f62ebc8d0bed76181e596df4b7726fa512b
 		);
 
 		// Saving?
 		if (isset($_GET['save']))
 		{
-<<<<<<< HEAD
-=======
-		//	if(isset($_POST['tea_useapiabove']))
-		//	{
-		//		$_POST['tea_corpid'] = $corp;
-		//		$_POST['tea_allianceid'] = $alliance;
-		//		unset($_POST['tea_useapiabove']);
-		//	}
->>>>>>> b1453f62ebc8d0bed76181e596df4b7726fa512b
 			$config_vars[] = array('select', 'tea_charid', $charlist);
 			saveDBSettings($config_vars);
 			redirectexit('action=admin;area=tea;sa=settings');
@@ -1809,11 +1761,6 @@ class TEA extends TEAC
 		}
 
 		$this -> context['post_url'] = $scripturl . '?action=admin;area=tea;save';
-<<<<<<< HEAD
-=======
-	//	$context['settings_title'] = $txt['tea_tea'];
-	//	$context['settings_message'] = $txt['tea_settings_message'];
->>>>>>> b1453f62ebc8d0bed76181e596df4b7726fa512b
 
 		prepareDBSettingContext($config_vars);
 	}
@@ -1956,6 +1903,7 @@ class TEA extends TEAC
 			}
 			elseif($_POST["submit"] == "ADD")
 			{
+				$valid=TRUE;
 				if($_POST['id'] == "new")
 				{
 					$id = $this -> smcFunc['db_query']('', "SELECT ruleid FROM {db_prefix}tea_rules ORDER BY ruleid DESC LIMIT 1");
@@ -2002,35 +1950,46 @@ class TEA extends TEAC
 					{
 						$post = array();
 						$post = array('names' => $value);
-						$xml = $this -> get_xml('find', $post);
-						$xml = new SimpleXMLElement($xml);
-						$xml = (int)$xml -> result -> rowset -> row[0]['characterID'];
-						if($type == "corp")
+						$xml2 = $this -> get_xml('find', $post);
+						try 
 						{
-							$check = $this -> corp_info($xml);
-							if(!empty($check))
-							{
-								$value = $xml;
-								$extra = $check['corpname'];
-							}
-							else
-							{
-								die($this -> txt['tea_cantfindcorp'].$value);
-							}
+							$xml = new SimpleXMLElement($xml2);
 						}
-						else
+						catch(Exception $e)
 						{
-							$this -> alliance_list();
-							$alliances = $this -> corps;
-							$alliances = array_flip($alliances);
-							if(isset($alliances[$xml]))
+							$_SESSION['tea_error'][] = "<b><font color=\"red\">Name lookup returning invalid xml</font></b>";
+							$valid = false;	
+						}
+						if ($valid)
+						{
+							$xml = (int)$xml -> result -> rowset -> row[0]['characterID'];
+							if($type == "corp")
 							{
-								$extra = $value;
-								$value = $xml;
+								$check = $this -> corp_info($xml);
+								if(!empty($check))
+								{
+									$value = $xml;
+									$extra = $check['corpname'];
+								}
+								else
+								{
+									die($this -> txt['tea_cantfindcorp'].$value);
+								}
 							}
 							else
 							{
-								die($this -> txt['tea_cantfindalliance'].$value);
+								$this -> alliance_list();
+								$alliances = $this -> corps;
+								$alliances = array_flip($alliances);
+								if(isset($alliances[$xml]))
+								{
+									$extra = $value;
+									$value = $xml;
+								}
+								else
+								{
+									die($this -> txt['tea_cantfindalliance'].$value);
+								}
 							}
 						}
 					}
@@ -2057,10 +2016,21 @@ class TEA extends TEAC
 							{
 								$post = array();
 								$post = array('ids' => $value);
-								$xml = $this -> get_xml('name', $post);
-								$xml = new SimpleXMLElement($xml);
-								$xml = (string)$xml -> result -> rowset -> row[0]['name'];
-								$extra = $xml;
+								$xml2 = $this -> get_xml('name', $post);
+								try
+								{
+									$xml = new SimpleXMLElement($xml2);
+								}
+								catch(Exception $e)
+								{
+									$_SESSION['tea_error'][] = "<b><font color=\"red\">ID lookup returning invalid xml</font></b>";
+									$valid = false;
+								}
+								if ($valid)
+								{
+									$xml = (string)$xml -> result -> rowset -> row[0]['name'];
+									$extra = $xml;
+								}
 							}
 							else
 							{
@@ -2068,8 +2038,11 @@ class TEA extends TEAC
 							}
 						}
 					}
-					$value = mysql_real_escape_string($value);
-					$extra = mysql_real_escape_string($extra);
+					if ($valid)
+					{
+						$value = mysql_real_escape_string($value);
+						$extra = mysql_real_escape_string($extra);
+					}
 				}
 				elseif($type == "role" || $type == "title" || $type == "militia")
 					$value = mysql_real_escape_string($_POST['value']);
@@ -2083,10 +2056,12 @@ class TEA extends TEAC
 					$group = $_POST['group'];
 				elseif(!$exists)
 					die("Invalid Group");
-
-				if(!$exists)
-					$this -> query("INSERT INTO {db_prefix}tea_rules (ruleid, name, main, `group`, andor) VALUES ($id, '$name', $main, $group, '$andor')");
-				$this -> query("INSERT INTO {db_prefix}tea_conditions (ruleid, isisnt, type, value, extra) VALUES ($id, '$isisnt', '$type', '$value', '$extra')");
+				if ($valid)
+				{
+					if(!$exists)
+						$this -> query("INSERT INTO {db_prefix}tea_rules (ruleid, name, main, `group`, andor) VALUES ($id, '$name', $main, $group, '$andor')");
+					$this -> query("INSERT INTO {db_prefix}tea_conditions (ruleid, isisnt, type, value, extra) VALUES ($id, '$isisnt', '$type', '$value', '$extra')");
+				}
 				//if(!isset($types[$_POST['type']]))
 				//	error
 				//elseif(!is_numeric($_POST['id']) && $_POST['id'] != "new")
@@ -2480,7 +2455,7 @@ value_type();
 		{
 			if(!$this -> modSettings["tea_enable"])
 				$file = "API Mod is Disabled";
-			if(!$_GET['lastid'] || !is_numeric($_GET['lastid']))
+			if(!array_key_exists('lastid',$_GET) || !is_numeric($_GET['lastid']))
 				$lastid = "0";
 			else
 				$lastid = $_GET['lastid'];
