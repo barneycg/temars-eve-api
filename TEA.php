@@ -23,7 +23,7 @@ class TEA extends TEAC
 		$this -> smcFunc = &$smcFunc;
 		$this -> settings = &$settings;
 
-		$this -> version = "1.3.1 r4";
+		$this -> version = "1.3.1 r5";
 
 		$permissions["tea_view_own"] = 1;
 		$permissions["tea_view_any"] = 0;
@@ -109,6 +109,7 @@ class TEA extends TEAC
 		$dsets['tea_jabber_nf'] = '#ct# #name#';
 		$dsets['tea_ts_addrule_group'] = '-1';
 		$dsets['tea_jabber_addrule_group'] = '-1';
+		$dsets['tea_groupas_restricted'] = '-1';
 
 		foreach($dsets as $s => $v)
 		{
@@ -148,12 +149,13 @@ class TEA extends TEAC
 	function checkmask($xml)
 	{
 		//var_dump($xml);die;
-		$xml = explode("<key ", $xml);
-		$xml = explode('accessMask="', $xml[1], 2);
-		$xml = explode('" ',$xml[1],2);
-		$xml=$xml[0];
 		
-		$accessMask = (int)$xml;
+		//$xml = explode("<key ", $xml);
+		//$xml = explode('accessMask="', $xml[1], 2);
+		//$xml = explode('" ',$xml[1],2);
+		//$xml=$xml[0];
+		
+		$accessMask = (int)$xml->result[0]->key[0]['accessMask'];
 		$result['access'] = array(
 			'Wallet Transactions'    => ($accessMask & 4194304)  > 0,
 			'Wallet Journal'         => ($accessMask & 2097152) > 0,
@@ -209,7 +211,8 @@ class TEA extends TEAC
 
 		$this -> alliance_list();
 		$this -> get_standings();
-		$this -> main($apiuser, $force);
+		return $this -> main($apiuser, $force);
+		//echo "done<br>\n";
 	}
 
 	function main($user, $force=FALSE)
@@ -220,9 +223,9 @@ class TEA extends TEAC
 			Return;
 		}
 		if(!empty($user))
-			$this -> single($user,$force);
+			return $this -> single($user,$force);
 		else
-			$this -> all($force);
+			return $this -> all($force);
 	}
 
 	function check_api_service()
@@ -252,41 +255,49 @@ class TEA extends TEAC
 			}
 			unset($corps);
 		}
-
-		$data = $this -> standings($this -> modSettings["tea_apiid"], $this -> modSettings["tea_vcode"]);
-		if ($data == 9999 || $data == 403)
-		{
-			echo "There is a problem fetching Standings : \n";
-			var_dump ($data);
-			Return false;
-		}
 		
-		$this -> blues = $data[0];
-		$this -> reds = $data[1];
-		$count = $data[2];
-
-		if($count > 0)
+		$data = $this -> standings($this -> modSettings["tea_apiid"], $this -> modSettings["tea_vcode"]);
+		//var_dump($data);die;
+		
+		if (($data) && (gettype($data) == 'array'))
 		{
-			$file = '<?php'."\n\n";
-			$file .= '$time = '.time().';'."\n\n";
-			foreach($this -> blues as $c => $a)
+			$this -> blues = $data[0];
+			$this -> reds = $data[1];
+			$count = $data[2];
+
+			if($count > 0)
 			{
-				$file .= '$blues['.$c.'] = array(\''.str_replace("'", "\'", $a[0]).'\', '.$a[1].', '.$a[2].');'."\n";
+				$file = '<?php'."\n\n";
+				$file .= '$time = '.time().';'."\n\n";
+				foreach($this -> blues as $c => $a)
+				{
+					$file .= '$blues['.$c.'] = array(\''.str_replace("'", "\'", $a[0]).'\', '.$a[1].', '.$a[2].');'."\n";
+				}
+				foreach($this -> reds as $c => $a)
+				{
+					$file .= '$reds['.$c.'] = array(\''.str_replace("'", "\'", $a[0]).'\', '.$a[1].', '.$a[2].');'."\n";
+				}
+				$file .= '?>';
+				$fp = fopen($sfile, 'w');
+				fwrite($fp, $file);
+				fclose($fp);
 			}
-			foreach($this -> reds as $c => $a)
-			{
-				$file .= '$reds['.$c.'] = array(\''.str_replace("'", "\'", $a[0]).'\', '.$a[1].', '.$a[2].');'."\n";
-			}
-			$file .= '?>';
-			$fp = fopen($sfile, 'w');
-			fwrite($fp, $file);
-			fclose($fp);
+		}
+		elseif (($data) && (gettype($data) == 'integer'))
+		{
+			echo "API call error while fetching standings: \nError Code = $xml";
+			Return $xml;
+		}
+		else
+		{
+			echo "API System Screwed - Can't Fetch Standings : \n";
+			Return 9999;
 		}
 	}
 
 	function single($user,$force=FALSE)
 	{
-		//echo $user ."-";
+		//echo $user ."\n";
 		
 		if(isset($this -> modSettings["tea_groupass_unknown"]))
 			$mongroups[$this -> modSettings["tea_groupass_unknown"]] = TRUE;
@@ -354,10 +365,11 @@ class TEA extends TEAC
 			}
 			else
 			{
-                                //$apiuserstmp = $this -> smcFunc['db_query']('', "SELECT userid, api, status FROM {db_prefix}tea_api WHERE ID_MEMBER = {int:id} AND (errorid is NULL or (errorid != 403 AND errorid != 9996))", array('id' => $id));
-                                $apiuserstmp = $this -> smcFunc['db_query']('', "SELECT userid, api, status FROM {db_prefix}tea_api WHERE ID_MEMBER = {int:id} AND (errorid is NULL or (errorid != 403)) ORDER BY errorid ASC", array('id' => $id));
+				//$apiuserstmp = $this -> smcFunc['db_query']('', "SELECT userid, api, status FROM {db_prefix}tea_api WHERE ID_MEMBER = {int:id} AND (errorid is NULL or (errorid != 403 AND errorid != 9996))", array('id' => $id));
+				$apiuserstmp = $this -> smcFunc['db_query']('', "SELECT userid, api, status FROM {db_prefix}tea_api WHERE ID_MEMBER = {int:id} AND (errorid is NULL or (errorid not in (200,201,202,203,204,205,206,207,208,209,210,211,212,213,220,221,222,223))) ORDER BY errorid ASC", array('id' => $id));
 			}
 			$apiusers = $this -> select($apiuserstmp);
+			
 			if(!empty($apiusers))
 			{
 				$mainmatch = FALSE;
@@ -372,18 +384,10 @@ class TEA extends TEAC
 					$post = array('keyID' => $apiuser, 'vCode' => $apikey);
 					
 					$accnt = $this -> get_xml('keyinfo', $post);
-					
-					if(stristr($accnt, "403 - Forbidden"))
+
+					if (($accnt) && (gettype($accnt) == 'object'))
 					{
-						$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = 403, error = 'Forbidden', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
-						$chars = array('name' => NULL, 'charid' => NULL, 'corpname' => NULL, 'corpid' => NULL, 'ticker' => NULL, 'allianceid' => NULL, 'alliance' => NULL);
-						$status = 'error';
-						$error = TRUE;
-						Continue;
-					}
-					else
-					{
-						$accnt = $this -> xmlparse($accnt, "result");
+						//$accnt = $this -> xmlparse($accnt, "result");
 						if (!$this->checkmask($accnt))
 						{
 							$_SESSION['tea_error'][] = "<b><font color=\"red\">Check your Access Mask - keyid = $apiuser ;)</font></b>";
@@ -394,70 +398,67 @@ class TEA extends TEAC
 							$error = TRUE;
 						}	
 
-						$accnt = explode("<key ", $accnt);
-						if (empty($accnt[1]))
-						{
-							Return 9999;
-						}
-						$accnt = explode('type="', $accnt[1], 2);
-						$accnt = explode('" ',$accnt[1],2);
-						$accnt=$accnt[0];
-						
-						if ($accnt!="Account")
+						if ($accnt->result[0]->key[0]['type']!="Account")
 						{
 							$_SESSION['tea_error'][] = "<b><font color=\"red\">Api must be of Type Character and show ALL toons ;)</font></b>";
 							$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = '9997', error = 'Not All Toons', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
-							
 							$error = TRUE;
-							
 							Continue;
 						}
+					}
+					elseif (($accnt) && (gettype($accnt) == 'integer'))
+					{
+						$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = $accnt, error = $accnt, status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+						$chars = array('name' => NULL, 'charid' => NULL, 'corpname' => NULL, 'corpid' => NULL, 'ticker' => NULL, 'allianceid' => NULL, 'alliance' => NULL);
+						$status = 'error';
+						$error = TRUE;
+						
+						if (($accnt >= 901 && $accnt <= 1000) || ($accnt >= 501 && $accnt <=532))
+							return FALSE;
+						Continue;
+					}
+					else
+					{
+						$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = 9999, error = 'CCP', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+						$chars = array('name' => NULL, 'charid' => NULL, 'corpname' => NULL, 'corpid' => NULL, 'ticker' => NULL, 'allianceid' => NULL, 'alliance' => NULL);
+						$status = 'error';
+						$error = TRUE;
+						
+						return FALSE;
+
+						Continue;
 					}
 					
 					if ($apikey)
 					{
 						$matched = array('none', array());
 						$chars = $this -> get_characters($apiuser, $apikey);
-						
-						if ($chars == 403)
-						{
-							$error = TRUE;
-							$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = 403, error = 'Forbidden', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
-							return $chars;
-						}
-						if ($chars == 9999)
+
+						if (($chars == 9999) || (empty($chars)))
 						{
 							$error = TRUE;
 							$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = 9999, error = 'Api Fault', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
 							return $chars;
-						}
-						if ($chars == 9996)
+						}						
+						elseif ($chars == 9996)
 						{
 							$error = TRUE;
 							//$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = 9999, error = 'Api Fault', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
 							return $chars;
 						}
-
-						
-						/*if(empty($chars))
+						elseif (gettype($chars) == 'integer')
 						{
-							$error = $this -> get_error($this -> data);
-							$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = '".$error[0]."', error = '".$error[1]."', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
-							if(($error[0] >= 500 && $error[0] < 600) || ($error[0] >= 900 && $error[0] < 1000)) // Api System is Down
-								return $cr;
-							else
-								$chars = array('name' => NULL, 'charid' => NULL, 'corpname' => NULL, 'corpid' => NULL, 'ticker' => NULL, 'allianceid' => NULL, 'alliance' => NULL);
-							$status = 'error';
 							$error = TRUE;
+							$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = $chars, error = $chars, status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+							return $chars;
 						}
-						*/
-
-						if ($chars != 9998)
+						else
 						{
 							if(!$error)
 								$this -> query("UPDATE {db_prefix}tea_api SET status = 'OK', errorid=NULL, error=NULL,status_change = ".time()." WHERE ID_MEMBER = {int:id} AND userid = {int:userid}",
 							array('id' => $id, 'userid' => $apiuser));
 							// get main rules
+							//echo "getting main rules<br>\n";
 							$rules = $this -> smcFunc['db_query']('', "SELECT ruleid, `group`, andor FROM {db_prefix}tea_rules WHERE main = 1 AND enabled = 1 ORDER BY ruleid");
 							$rules = $this -> select($rules);
 							if(!empty($rules) && !$ignore)
@@ -502,7 +503,7 @@ class TEA extends TEAC
 														if ($cond[3] == 'is' && $char['allianceid'] == $cond[1])
 														{
 															$corpid = $this -> corp_info($char['corpid']);
-															if ($corpid == 9999 || $corpid = 403) 
+															if (gettype($corpid) == 'integer')  // == 9999 || $corpid == 403)
 																return $corpid;
 															$ceoid = $corpid['ceoid'];
 															if ($char['charid'] == $ceoid)
@@ -593,7 +594,7 @@ class TEA extends TEAC
 														if($cond[3] == 'is')
 														{
 															$skills = $this -> skill_list($apiuser, $apikey, $char['charid']);
-															if ($skills == 9999 || $skills == 403)
+															if (gettype($skills) == 'integer')// == 9999 || $skills == 403)
 																return $skills;
 															if(strstr($cond[1], '%'))
 															{
@@ -623,7 +624,7 @@ class TEA extends TEAC
 														elseif($cond[3] == 'isnt')
 														{
 															$skills = $this -> skill_list($apiuser, $apikey, $char['charid']);
-															if ($skills == 9999 || $skills == 403)
+															if (gettype($skills) == 'integer') // == 9999 || $skills == 403)
 																return $skills;
 															if(strstr($cond[1], '%'))
 															{
@@ -659,7 +660,7 @@ class TEA extends TEAC
 														}
 													case 'role':
 														$roles = $this -> roles($apiuser, $apikey, $char['charid']);
-														if ($roles == 9999 || $roles == 403)
+														if (gettype($roles) == 'integer') //9999 || $roles == 403)
 															return $roles;
 														if($cond[3] == 'is' && isset($roles['role'.strtolower($cond[1])]))
 														{
@@ -680,7 +681,7 @@ class TEA extends TEAC
 														}
 													case 'title':
 														$titles = $this -> titles($apiuser, $apikey, $char['charid']);
-														if ($titles == 9999 || $titles == 403)
+														if (gettype($titles) == 'integer') //9999 || $titles == 403)
 															return $titles;
 														if($cond[3] == 'is' && isset($titles[strtolower($cond[1])]))
 														{
@@ -701,7 +702,7 @@ class TEA extends TEAC
 														}
 													case 'militia':
 														$militia = $this -> militia($apiuser, $apikey, $char['charid']);
-														if ($militia == 9999 || $militia == 403)
+														if (gettype($militia) == 'integer') //9999 || $militia == 403)
 															return $militia;
 														if($cond[3] == 'is' && $militia == $cond[1])
 														{
@@ -755,11 +756,13 @@ class TEA extends TEAC
 									}
 								}
 							}
+							
 							// get additional
+							//echo "getting additional rules<br>\n";
 							$rules = $this -> smcFunc['db_query']('', "SELECT ruleid, `group`, andor FROM {db_prefix}tea_rules WHERE main = 0 AND enabled = 1 ORDER BY ruleid");
 				
 							$rules = $this -> select($rules);
-
+							//$rules = '';
 							if(!empty($rules))
 							{
 								foreach($rules as $rule)
@@ -799,7 +802,7 @@ class TEA extends TEAC
 														if ($cond[3] == 'is' && $char['allianceid'] == $cond[1])
 														{
 															$corpid = $this -> corp_info($char['corpid']);
-															if ($corpid == 9999 || $corpid == 403)
+															if (gettype($corpid) == 'integer') //9999 || $corpid == 403)
 																return $corpid;
 															$ceoid = $corpid['ceoid'];
 															if ($char['charid'] == $ceoid)
@@ -891,8 +894,9 @@ class TEA extends TEAC
 														if($cond[3] == 'is')
 														{
 															$skills = $this -> skill_list($apiuser, $apikey, $char['charid']);
-															if ($skills == 9999 || $skills == 403)
+															if (gettype($skills) == 'integer') //9999 || $skills == 403)
 																return $skills;
+
 															if(strstr($cond[1], '%'))
 															{
 																$cond[1] = str_replace('%', '(.+)', $cond[1]);
@@ -909,6 +913,7 @@ class TEA extends TEAC
 																	}
 																}
 															}
+																														
 															if(isset($skills[strtolower($cond[1])]) && $skills[strtolower($cond[1])] >= $cond[2])
 															{
 																if($andor == 'OR')
@@ -924,7 +929,7 @@ class TEA extends TEAC
 														elseif($cond[3] == 'isnt')
 														{
 															$skills = $this -> skill_list($apiuser, $apikey, $char['charid']);
-															if ($skills == 9999 || $skills == 403)
+															if (gettype($skills) == 'integer') //9999 || $skills == 403)
 																return $skills;
 															if(strstr($cond[1], '%'))
 															{
@@ -957,7 +962,7 @@ class TEA extends TEAC
 														}
 													case 'role':
 														$roles = $this -> roles($apiuser, $apikey, $char['charid']);
-														if ($roles == 9999 || $roles == 403)
+														if (gettype($roles) == 'integer') //9999 || $roles == 403)
 															return $skills;
 														if($cond[3] == 'is' && isset($roles['role'.strtolower($cond[1])]))
 														{
@@ -978,7 +983,7 @@ class TEA extends TEAC
 														}
 													case 'title':
 														$titles = $this -> titles($apiuser, $apikey, $char['charid']);
-														if ($titles == 9999 || $titles == 403)
+														if (gettype($titles) == 'integer') //9999 || $titles == 403)
 															return $titles;
 														if($cond[3] == 'is' && isset($titles[strtolower($cond[1])]))
 														{
@@ -999,7 +1004,7 @@ class TEA extends TEAC
 														}
 													case 'militia':
 														$militia = $this -> militia($apiuser, $apikey, $char['charid']);
-														if ($militia == 9999 || $militia == 403)
+														if (gettype($militia) == 'integer') //9999 || $militia == 403)
 																return $militia;
 														if($cond[3] == 'is' && $militia == $cond[1])
 														{
@@ -1045,8 +1050,9 @@ class TEA extends TEAC
 									}
 								}
 							}
-							$cr['additional'] = $matched[1];
-							$matched[1] = implode(',', $matched[1]);
+
+							$cr['additional'] = array_unique($matched[1]);
+							$matched[1] = implode(',', array_unique($matched[1]));
 							$matched = implode(';', $matched);
 							if(!$error)
 								$this -> query("UPDATE {db_prefix}tea_api SET status = 'checked', matched = '".$matched."', errorid = NULL, error = NULL, status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
@@ -1090,6 +1096,8 @@ class TEA extends TEAC
 			$agroups = implode(',', $agroups);
 			// change additional groups
 			$this -> query("UPDATE {db_prefix}members SET additional_groups = '".$agroups."' WHERE ID_MEMBER = {int:id}", array('id' => $id));
+			//var_dump($cr);die;
+			//return $user;
 			return $cr;
 			//$this -> query("UPDATE {db_prefix}members SET ID_GROUP = ".$rule[1]." WHERE ID_MEMBER = ".$id);
 			//$this -> query("UPDATE {db_prefix}tea_api SET status = 'red', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND status = 'OK'");
@@ -1100,10 +1108,9 @@ class TEA extends TEAC
 	{
 		$charlist = array();
 		//var_dump(get_class_methods($this));
-
 		
 		$chars = $this -> get_api_characters($userid, $api);
-		if ($chars == 9999 || $chars == 403)
+		if ((gettype($chars) == 'integer') && (($chars == 9999) || ($chars >= 200 && $chars <=223)))
 		{
 			$this -> query("DELETE FROM {db_prefix}tea_characters WHERE userid = '" . mysql_real_escape_string($userid) . "'");
 			Return $chars;
@@ -1140,9 +1147,8 @@ class TEA extends TEAC
 		//var_dump(get_class_methods($this));
 
 		$chars = $this -> get_api_characters($userid, $api);
-		if ($chars == 9999 || $chars == 403)
+		if (gettype($chars) == 'integer')//($chars == 9999 || $chars == 403)
 		{
-			
 			Return $chars;
 		}
 		if(!empty($chars))
@@ -1275,6 +1281,7 @@ class TEA extends TEAC
 	{
 		//if($apiecho)
 		//	echo "checking all...\n<br>";
+		$user_list = array();
 		$next = $this -> modSettings['tea_nextpull'];
 		if($next > time() && $force === FALSE)
 		{	
@@ -1282,7 +1289,7 @@ class TEA extends TEAC
 			{
 				//echo "Now : " . time() . "\nNext : " . $next ."\n";
 			}
-			Return;
+			Return $user_list;
 		}
 		$time = time() - 3600;
 		$this -> smcFunc['db_query']('', "DELETE FROM {db_prefix}tea_cache WHERE time < ".$time);
@@ -1291,8 +1298,10 @@ class TEA extends TEAC
 		else
 			$lastid = $this -> modSettings['tea_lastpull'];
 		$limit = time() + 25;
+		
 		$users = $this -> smcFunc['db_query']('', "SELECT id_member, member_name, ID_GROUP FROM {db_prefix}members WHERE id_member > $lastid Order by id_member");
 		$users = $this -> select($users);
+		$count = 0;
 		if(!empty($users))
 		{
 			$this -> log .= '<table border=1><tr><td><b>Name</b></td><td><b>Main Group</b></td><td><b>Additional Groups</b></td></tr>';
@@ -1300,20 +1309,21 @@ class TEA extends TEAC
 			{
 				$this -> log .= '<tr><td>'.$user[1].'</td>';
 				$cr = $this -> single($user[0]);
-
+				$user_list[$user[0]]=$cr;
+				$count++;
 				if ( $cr == 9999 )
 				{ 
 					$this -> log .= '<td>API Problem</td><td>API Problem</td></tr>';
 					$blastid = $user[0];
 					Break;
 				}
-				elseif ( $cr == 403 )
+				elseif ( gettype($cr) == 'integer' )
 				{
-					$this -> log .= '<td>API Key Forbidden</td><td>API Key Forbidden</td></tr>';
+					$this -> log .= '<td>API Key Error</td><td>API Key error</td></tr>';
 					//$blastid = $user[0];
 					Continue;
 				}
-				else
+				elseif (!empty($cr))
 				{
 					if(is_array($cr['additional']))
 					{
@@ -1337,7 +1347,7 @@ class TEA extends TEAC
 			}
 			$this -> log .= '</table>';
 		}
-		
+		//echo "proccessed $count api keys\n";
 		if (!empty($cr) && ($cr == 9999))
 		{
 			$next = time() + 3600;
@@ -1363,7 +1373,12 @@ class TEA extends TEAC
 					echo "Reset lastid to Zero\n";
 			}
 			else
+			{
 				$this -> lastid = $lastid;
+				$lastid = 0;
+				if (!isset($_GET['update']))
+					echo "Reseting lastid to Zero\n";
+			}
 
 			$next = time() + 60;
 		}
@@ -1380,6 +1395,7 @@ class TEA extends TEAC
 		//$fp = fopen("api.log", 'a');
 		//fwrite($fp, $this -> file);
 		//fclose($fp);
+		Return $user_list;
 	}
 
 	function get_rule_name($id)
@@ -1559,27 +1575,21 @@ class TEA extends TEAC
 		if(!$update)
 			Return;
 		$data = $this -> get_xml('alliances');
-		//$data = $this -> rowset2($data);
-		$data = explode("<row name=\"", $data);
-		unset($data[0]);
-		foreach($data as $a)
+		
+		foreach($data->result->rowset[0]->row as $alli)
 		{
-			$a = explode("</rowset>", $a, 2);
-			$a = explode('" shortName="', $a[0], 2);
-			$name = $a[0];
-			$a = explode('" allianceID="', $a[1], 2);
-			$tag = $a[0];
-			$a = explode('" executorCorpID="', $a[1], 2);
-			$id = $a[0];
-			$a = explode('<row corporationID="', $a[1]);
-			unset($a[0]);
-			foreach($a as $corp)
+			$name = (string)$alli['shortName'];
+			$alliid = (string)$alli['allianceID'];
+			$execid = (string)$alli['executorCorpID'];
+			
+			foreach($alli->rowset->row as $corp)
 			{
-				$corp = explode('" startDate="', $corp, 2);
-				$corps[$corp[0]] = $id;
+				$corpid = (string)$corp['corporationID'];
+				$corps[$corpid] = $alliid;
 			}
-			$this -> atags[$id] = $tag;
+			$this -> atags[$alliid] = $name;
 		}
+		
 		if(count($corps) > 5)
 		{
 			$time = time();
@@ -1599,6 +1609,7 @@ class TEA extends TEAC
 			fclose($fp);
 			$this -> corps = $corps;
 		}
+
 		Return $time;
 	}
 
@@ -1688,6 +1699,21 @@ class TEA extends TEAC
 			//$charid = $this -> modSettings["tea_charid"];
 			$userid = $this -> modSettings["tea_apiid"];
 			$api = $this -> modSettings["tea_vcode"];
+		}
+		$chars = $this -> get_characters_reg_check($userid, $api, FALSE);
+
+		$charlist = array();
+		if((!empty($chars)) && ($chars != 9998))
+		{
+			foreach($chars as $char)
+			{
+				$charlist[$char['charid']] = $char['name'];
+				if($charid == $char['charid'])
+				{
+					$corp = $char['corpid'];
+					$alliance = $char['allianceid'];
+				}
+			}
 		}
 		$blues = NULL;
 		$reds = NULL;
@@ -1950,17 +1976,9 @@ class TEA extends TEAC
 					{
 						$post = array();
 						$post = array('names' => $value);
-						$xml2 = $this -> get_xml('find', $post);
-						try 
-						{
-							$xml = new SimpleXMLElement($xml2);
-						}
-						catch(Exception $e)
-						{
-							$_SESSION['tea_error'][] = "<b><font color=\"red\">Name lookup returning invalid xml</font></b>";
-							$valid = false;	
-						}
-						if ($valid)
+						$xml = $this -> get_xml('find', $post);
+				        
+						if (gettype($xml) == 'object')
 						{
 							$xml = (int)$xml -> result -> rowset -> row[0]['characterID'];
 							if($type == "corp")
@@ -1992,6 +2010,11 @@ class TEA extends TEAC
 								}
 							}
 						}
+						else
+						{
+							$_SESSION['tea_error'][] = "<b><font color=\"red\">Name lookup returning invalid xml</font></b>";
+							$valid = false;	
+           				}
 					}
 					else
 					{
@@ -2016,21 +2039,19 @@ class TEA extends TEAC
 							{
 								$post = array();
 								$post = array('ids' => $value);
-								$xml2 = $this -> get_xml('name', $post);
-								try
-								{
-									$xml = new SimpleXMLElement($xml2);
-								}
-								catch(Exception $e)
-								{
-									$_SESSION['tea_error'][] = "<b><font color=\"red\">ID lookup returning invalid xml</font></b>";
-									$valid = false;
-								}
-								if ($valid)
+								$xml = $this -> get_xml('name', $post);
+								
+								if (gettype($xml) == 'object')
 								{
 									$xml = (string)$xml -> result -> rowset -> row[0]['name'];
 									$extra = $xml;
 								}
+								else
+        		                {
+	                	            $_SESSION['tea_error'][] = "<b><font color=\"red\">ID lookup returning invalid xml</font></b>";
+                                    $valid = false;
+                                }
+			
 							}
 							else
 							{
@@ -2321,12 +2342,18 @@ var rules = new Array();
 '.$javalist.'
 function value_type(fromedit)
 {
-	type = document.makerule.type.value;
-	id = document.makerule.id.value;
-	name = document.makerule.name.value;
-	group = document.makerule.group.value;
-	main = document.makerule.main.checked;
-	andor = document.makerule.andor.value;
+	if (typeof(document.makerule.type) != "undefined")
+		type = document.makerule.type.value;
+	if (typeof(document.makerule.id) != "undefined")
+		id = document.makerule.id.value;
+	if (typeof(document.makerule.name) != "undefined")	
+		name = document.makerule.name.value;
+	if (typeof(document.makerule.group) != "undefined")	
+		group = document.makerule.group.value;
+	if (typeof(document.makerule.main) != "undefined")	
+		main = document.makerule.main.checked;
+	if (typeof(document.makerule.andor) != "undefined")	
+		andor = document.makerule.andor.value;
 
 	if(document.makerule.submit.value == "EDIT" && fromedit == false)
 	{
@@ -2616,37 +2643,56 @@ value_type();
 					Continue;
 				}
 			}
+			
 			$post = array();
 			$post = array('keyID' => $userid, 'vCode' => $api);
 			$accnt = $this -> get_xml('keyinfo', $post);
-			$this -> data = $accnt;
-
-			if(!stristr($accnt, "403 - Forbidden"))
+			if (($accnt) && (gettype($accnt) == 'object'))
 			{
-				$accnt = $this -> xmlparse($accnt, "result");
-
-				$accnt = explode("<key ", $accnt);
-				$accnt = explode('type="', $accnt[1], 2);
-				$accnt = explode('" ',$accnt[1],2);
-				$accnt=$accnt[0];
-				if ($accnt!="Account")
+				if ($accnt->result[0]->key[0]['type'] != "Account")
 				{
 					$_SESSION['tea_error'][] = "<b><font color=\"red\">Api must be of Type Character and show ALL toons :)</font></b>";
 					$this -> query("DELETE FROM {db_prefix}tea_api WHERE ID_MEMBER = $memberID AND userid = '" . mysql_real_escape_string($userid) . "'");
 					Continue;
 				}
-			}
-			
-			if($duserid != $userid || $dapi != $api)
-			{
-				$this -> query("
-					REPLACE INTO {db_prefix}tea_api
-						(ID_MEMBER, userid, api, status, status_change)
-					VALUES 
-					($memberID, '" . mysql_real_escape_string($userid) . "', '" . mysql_real_escape_string($api) . "', 'unchecked', ".time().")");
-			}
 				
+	/*			$this -> data = $accnt;
+
+				if(!stristr($accnt, "403 - Forbidden"))
+				{
+					$accnt = $this -> xmlparse($accnt, "result");
+
+					$accnt = explode("<key ", $accnt);
+					$accnt = explode('type="', $accnt[1], 2);
+					$accnt = explode('" ',$accnt[1],2);
+					$accnt=$accnt[0];
+					if ($accnt!="Account")
+					{
+						$_SESSION['tea_error'][] = "<b><font color=\"red\">Api must be of Type Character and show ALL toons :)</font></b>";
+						$this -> query("DELETE FROM {db_prefix}tea_api WHERE ID_MEMBER = $memberID AND userid = '" . mysql_real_escape_string($userid) . "'");
+						Continue;
+					}
+				}
+	*/			
+				if($duserid != $userid || $dapi != $api)
+				{
+					$this -> query("
+						REPLACE INTO {db_prefix}tea_api
+							(ID_MEMBER, userid, api, status, status_change)
+						VALUES 
+						($memberID, '" . mysql_real_escape_string($userid) . "', '" . mysql_real_escape_string($api) . "', 'unchecked', ".time().")");
+				}
+			}
+			elseif (($accnt) && (gettype($accnt) == 'integer'))
+			{
+				$_SESSION['tea_error'][] = "<b><font color=\"red\">API is returning an error code = $accnt</font></b>";
+			}
+			else
+			{
+				$_SESSION['tea_error'][] = "<b><font color=\"red\">API is returning invalid XML</font></b>";
+			}
 		}
+		
 		if(isset($_POST['del_api']))
 		{
 			foreach($_POST['del_api'] as $userid)
@@ -2655,10 +2701,14 @@ value_type();
 				$this -> query("DELETE FROM {db_prefix}tea_characters WHERE userid = '" . mysql_real_escape_string($userid) . "'");
 			}
 		}
+		
 		unset($_POST['del_api']);
 		unset($_POST['tea_user_id']);
 		unset($_POST['tea_user_api']);
+		
+		
 		$this -> update_api($memberID,TRUE);
+		
 		$user = $this -> smcFunc['db_query']('', "SELECT main FROM {db_prefix}tea_user_prefs WHERE id = ".$memberID);
 		$user = $this -> select($user);
 
@@ -2666,6 +2716,7 @@ value_type();
 		{
 				$this->updaterealname($memberID);
 		}
+		
 		if($reg || empty($user) || $user[0][0] != $_POST['tea_charid'])
 		{
 			//if($modSettings['tea_usecharname'])
@@ -2891,13 +2942,13 @@ if(!empty($char))
 	{
 			$user = $this -> smcFunc['db_query']('', "SELECT id, main FROM {db_prefix}tea_user_prefs WHERE id = ".$memID);
 			$user = $this -> select($user);
-			var_dump($user);
+			
 			if(!empty($user))
 			{
 					$charid = $user[0][1];
 					$char = $this -> smcFunc['db_query']('', "SELECT name, corpid, corp, corp_ticker, allianceid, alliance, alliance_ticker FROM {db_prefix}tea_characters WHERE charid = ".$charid);
 					$char = $this -> select($char);
-					var_dump($char);
+					
 					if(!empty($char))
 					{
 							$name = $char[0][0];
@@ -3257,20 +3308,13 @@ function postFileReady()
 			$post = array('keyID' => $apiuser, 'vCode' => $apikey);
 			$accnt = $this -> get_xml('keyinfo', $post);
 
-			$this -> data = $accnt;
-
-			$accnt = $this -> xmlparse($accnt, "result");
-
-			//$accnt = $this -> parse($accnt);
-			$accnt = explode("<key ", $accnt);
-			$accnt = explode('type="', $accnt[1], 2);
-			$accnt = explode('" ',$accnt[1],2);
-			$accnt=$accnt[0];
-
-			if ($accnt!="Account")
+			if (($accnt) && (gettype($accnt) == 'object'))
 			{
-				$ret = 'The API needs to show All characters on the account';
-				Return $ret;
+				if ($accnt->result[0]->key[0]['type'] != "Account")
+				{
+					$ret = 'The API needs to show All characters on the account';
+					Return $ret;
+				}
 			}
 
 			if(!empty($_POST['tea_user_id']) && (empty($_POST['tea_charid']) || strlen($_POST['tea_charid']) < 3))

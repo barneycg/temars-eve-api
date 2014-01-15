@@ -573,9 +573,13 @@ function move(id, value)
 			unset ($usergroupssql);
 			unset ($usergroups);
 			unset ($jabbergs);
+			unset ($adding_group);
+			unset ($removing_group);
+			unset ($current_groups);
 			$memberID=$u[0];
 			$name = $u[1];
 			$nick = $this -> format_jabber_name($memberID, $u[2], FALSE, FALSE);
+			
 			$usergroupssql = $this -> smcFunc['db_query']('', "SELECT id_group, additional_groups, email_address FROM {db_prefix}members WHERE id_member = ".$memberID);
 			$usergroupssql = $this -> tea -> select($usergroupssql);
 
@@ -585,13 +589,14 @@ function move(id, value)
 				$usergroups[$usergroupssql[0][0]] = true;
 				if(!empty($usergroupssql[0][1]))
 				{
-					$usergroupssql[0][1] = explode(",", $usergroupssql[0][1]);
+					$usergroupssql[0][1] = explode(",", $usergroupssql[0][1]);					
 					foreach($usergroupssql[0][1] as $g)
 					{
 						$usergroups[$g] = true;
 					}
 				}
 			}
+			
 			if(!empty($rules))
 			{
 				foreach($rules as $r)
@@ -602,16 +607,37 @@ function move(id, value)
 					}
 				}
 			}
+			
+			$current_groups = $this -> db -> get_user_groups($name);
+			if (!empty($current_groups))
+				natsort($current_groups);
+			else
+				$current_groups = array();
+			if (!empty($jabbergs))
+				natsort($jabbergs);
+			else 
+				$jabbergs = array();
 
+			$adding_group = array_diff_key($jabbergs,$current_groups);
+			$removing_group = array_diff_key($current_groups,$jabbergs);
+			//var_dump($adding_group);
+			//var_dump($removing_group);
+			//die;
+			
 			//var_dump($jabbergs);
-		        if(!empty($jabbergs))
-                	{
-				$this -> db -> update_user($name, FALSE, $nick, $email, $jabbergs);
+			
+			if(!empty($jabbergs))
+			{
+				if (!empty($adding_group) || !empty($removing_group))
+				{
+					//echo "Updating groups for : ".$name."\n";
+					$this -> db -> update_user($name, FALSE, $nick, $email, $jabbergs);
+				}
 			}
 			else
 			{
 				$this -> db -> del_user($name);
-                                $this -> tea -> query("DELETE FROM {db_prefix}tea_jabber_users WHERE username = '".$name."'");
+				$this -> tea -> query("DELETE FROM {db_prefix}tea_jabber_users WHERE username = '".$name."'");
 				echo "Removing : ".$name."\n";
 			}
 		}

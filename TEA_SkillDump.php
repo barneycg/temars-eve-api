@@ -124,22 +124,22 @@ function getSkillArray()
         $skillArrayDump['3410'] = "Astrogeology";
         $skillArrayDump['3411'] = "Cybernetics";
         $skillArrayDump['3412'] = "Astrometrics";
-        $skillArrayDump['3413'] = "Engineering";
+        $skillArrayDump['3413'] = "Power Grid Management";
         $skillArrayDump['3416'] = "Shield Operation";
-        $skillArrayDump['3417'] = "Energy Systems Operation";
-        $skillArrayDump['3418'] = "Energy Management";
+        $skillArrayDump['3417'] = "Capacitor Systems Operation";
+        $skillArrayDump['3418'] = "Capacitor Management";
         $skillArrayDump['3419'] = "Shield Management";
         $skillArrayDump['3420'] = "Tactical Shield Manipulation";
         $skillArrayDump['3421'] = "Energy Pulse Weapons";
         $skillArrayDump['3422'] = "Shield Emission Systems";
-        $skillArrayDump['3423'] = "Energy Emission Systems";
+        $skillArrayDump['3423'] = "Capacitor Emission Systems";
         $skillArrayDump['3424'] = "Energy Grid Upgrades";
         $skillArrayDump['3425'] = "Shield Upgrades";
-        $skillArrayDump['3426'] = "Electronics";
+        $skillArrayDump['3426'] = "CPU Management";
         $skillArrayDump['3427'] = "Electronic Warfare";
         $skillArrayDump['3428'] = "Long Range Targeting";
-        $skillArrayDump['3429'] = "Targeting";
-        $skillArrayDump['3430'] = "Multitasking";
+        $skillArrayDump['3429'] = "Target Management";
+        $skillArrayDump['3430'] = "Advanced Target Management";
         $skillArrayDump['3431'] = "Signature Analysis";
         $skillArrayDump['3432'] = "Electronics Upgrades";
         $skillArrayDump['3433'] = "Sensor Linking";
@@ -378,7 +378,7 @@ function getSkillArray()
         $skillArrayDump['25233'] = "Corporation Contracting";
         $skillArrayDump['25235'] = "Contracting";
         $skillArrayDump['25530'] = "Neurotoxin Recovery";
-        $skillArrayDump['25538'] = "Nanite Control";
+        $skillArrayDump['25538'] = "Neurotoxin Control";
         $skillArrayDump['25544'] = "Gas Cloud Harvesting";
         $skillArrayDump['25718'] = "Heavy Assault Missile Specialization";
         $skillArrayDump['25719'] = "Heavy Assault Missiles";
@@ -455,7 +455,7 @@ function getSkillArray()
         $skillArrayDump['33000'] = "Gravimetric Sensor Compensation";
         $skillArrayDump['33001'] = "Ladar Sensor Compensation";
         $skillArrayDump['33002'] = "Radar Sensor Compensation";
-        $skillArrayDump['33078'] = "Armor Honeycombing";
+        $skillArrayDump['33078'] = "Armor Layering";
         $skillArrayDump['33091'] = "Amarr Destroyer";
         $skillArrayDump['33092'] = "Caldari Destroyer";
         $skillArrayDump['33093'] = "Gallente Destroyer";
@@ -464,9 +464,9 @@ function getSkillArray()
         $skillArrayDump['33096'] = "Caldari Battlecruiser";
         $skillArrayDump['33097'] = "Gallente Battlecruiser";
         $skillArrayDump['33098'] = "Minmatar Battlecruiser";
-
-
-
+        $skillArrayDump['33399'] = "Infomorph Synchronizing";
+        $skillArrayDump['33407'] = "Advanced Infomorph Psychology";
+	$skillArrayDump['33467'] = "Customs Code Expertise";
 
 	return $skillArrayDump;
 }

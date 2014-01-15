@@ -9,10 +9,82 @@ class TEAC
 		$this -> atags = array();
 	}
 
+	function is_valid($keyid, $vcode)
+	{
+		if(isset($this -> valid[$keyid]))
+		{
+			if($this -> valid[$keyid] == 0)
+				return FALSE;
+			else
+				Return TRUE;
+		}
+		$post = array();
+		$post = array('keyID' => $keyid, 'vCode' => $vcode);
+		$data = $this -> get_xml('keyinfo', $post);
+
+		if(stristr($data, "403 - Forbidden"))
+		{
+			$this -> valid[$keyid] = 0;
+			return FALSE;
+		}
+		$this -> valid[$keyid] = 1;
+		Return TRUE;
+	}
+	
+	function is_valid_xml($xml)
+	{
+		if ((stristr($xml, "<?xml version='1.0' encoding='UTF-8'?>")) && (stristr($xml, '<eveapi version="2">')))
+			return True;
+		else
+			return False;
+	}
+		
+	function error_check($xml)
+	{
+		$error_code = (int)$xml->error[0]['code'];
+		$error_msg = (string)$xml->error[0];
+		Return(array($error_code, $error_msg));
+		/*
+			$data = explode('<error code="', $data, 2);
+			if (array_key_exists(1,$data))
+			{
+					$data = explode('">', $data[1], 2);
+					if (array_key_exists(0,$data))
+					{
+						$id = $data[0];
+					}
+					else $id = 'no error code';
+					if (array_key_exists(1,$data))
+					{
+						$data = explode('</error>', $data[1], 2);
+						if (array_key_exists(0,$data))
+						{
+								$msg = $data[0];
+						}
+						else $msg = 'no error message';
+					}
+					else $msg = 'no error message';
+			}
+			else
+			{
+					$id = 'no error code';
+					$msg = 'no error message';
+			}
+			
+			Return(array($id, $msg));
+		//else
+			//TODO : work out the http error.
+		//	return XXXXXXX;
+		*/
+	}
+	
 	function get_xml($type, $post = NULL)
 	{
 		$url = '';
 		$xml = '';
+		$error = '';
+		$error_code = '';
+		
 		if($type == 'standings')
 			$url = "/corp/ContactList.xml.aspx";
 		elseif($type == 'alliances')
@@ -48,18 +120,41 @@ class TEAC
 		{
 			$cache = $this -> get_cache($url, $post);
 		}
-		if($cache)
-		{
-			return $cache;
-		}
-		$xml = $this -> get_site($this -> server.$url, $post);
-
-		if($type != 'calllist' && $type != 'standings' && $type != 'alliances' && method_exists($this, 'set_cache'))
-		{
-			$cache = $this -> set_cache($url, $post, $xml);
-		}
 		
-		return $xml;
+		if($cache)
+			$ret_val = $cache;
+		else
+			$ret_val = $this -> get_site($this -> server.$url, $post);
+
+		if ($this->is_valid_xml($ret_val))
+		{
+			$xml = new SimpleXMLElement($ret_val);
+			$error = $this->error_check($xml);
+			
+			if (!empty($error[0]))
+			{
+				$error_code = $error[0];
+			}
+			
+			switch ($error_code)
+			{
+				case '' :
+					if($type != 'calllist' && $type != 'standings' && $type != 'alliances' && method_exists($this, 'set_cache'))
+					{
+						$cache = $this -> set_cache($url, $post, $ret_val);
+					}
+					return $xml;
+				default :
+					if($type != 'calllist' && $type != 'standings' && $type != 'alliances' && method_exists($this, 'set_cache'))
+					{
+						$cache = $this -> set_cache($url, $post, $ret_val);
+					}
+					return $error_code;
+			}
+		}
+		else
+			//TODO : work out the http error.
+			return False;
 	}
 
 	function get_site($url, $post=FALSE)
@@ -84,7 +179,7 @@ class TEAC
 	
 		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
 		curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
 		$data = curl_exec($ch);
@@ -98,55 +193,10 @@ class TEAC
 		$info = array();
 		$post = array();;
 		$post = array('corporationID' => $corp);
-		$xml2 = '';
-		$xml2 = $this -> get_xml('corp', $post);
 		
-		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) || (stristr($xml2, "404 Not Found")) )
-		{
-				echo "API System Screwed - Can't fetch Corp Info : \n";
-				var_dump ($xml2);
-				Return 9999;
-		}
+		$xml = $this -> get_xml('corp', $post);
 		
-		if ( stristr($xml2, "403 - Forbidden") )
-		{
-			echo "Corp Info API forbidden\n";
-			Return 403;
-		}
-		
-		if(strstr($xml2, '<description>'))
-		{
-			$xml2 = explode("<description>", $xml2, 2);
-			$xml2[1] = explode("</description>", $xml2[1], 2);
-			$xml2 = $xml2[0].'<description>removed</description>'.$xml2[1][1];
-		}
-		
-		libxml_use_internal_errors(true);
-
-
-
-                try {
-                        $xml = new SimpleXMLElement($xml2);
-
-                }
-                catch(Exception $e)
-                {
-                        echo "corp_info api returning invalid xml\n";
-                        return 9999;
-                }
-
-  		if (empty($xml))
-  		{
-			foreach (libxml_get_errors() as $error) {
-        		echo 'corp_info Message: ' .$error."\n";
-   			}
-   			var_dump($xml2);
-
-    		libxml_clear_errors();
-    		return 9999;
-    	}
-		
-		if(isset($xml -> result -> corporationName))
+		if (($xml) && (gettype($xml) == 'object'))
 		{
 			$info['corpname'] = (string)$xml -> result -> corporationName;
 			$info['ticker'] = (string)$xml -> result -> ticker;
@@ -159,112 +209,100 @@ class TEAC
 				$info['aticker'] = $this -> atags[$info['allianceid']];
 			else
 				$info['aticker'] = '';
+			
+			Return ($info);
 		}
-		Return ($info);
+		elseif (($xml) && (gettype($xml) == 'integer'))
+		{
+			echo "API call error while fetching corp info: \nError Code = $xml for key id = $keyid\n";
+			Return $xml;
+		}
+		else
+		{
+			echo "API System Screwed - Can't Fetch Corp Info : \n";
+			Return 9999;
+		}
 	}
 
 	function standings($keyid, $vcode)
 	{
 		$post = array('keyID' => $keyid, 'vCode' => $vcode);
-		$xml2 = '';
-		$xml2 = $this -> get_xml('standings', $post);
+		$xml = $this -> get_xml('standings', $post);
 		
-		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) || (stristr($xml2, "404 Not Found")) )
+		if (($xml) && (gettype($xml) == 'object')) 
 		{
-				echo "API System Screwed - Can't Fetch Standings : \n";
-				var_dump ($xml2);
-				Return 9999;
-		}
-		
-		if ( stristr($xml2, "403 - Forbidden") )
-		{
-			echo "Standings API forbidden - $keyid\n";
-			Return 403;
-		}
-		
-		libxml_use_internal_errors(true);
-  		
-		try {
-                        $xml = new SimpleXMLElement($xml2);
-
-                }
-                catch(Exception $e)
-                {
-                        echo "standings api returning invalid xml\n";
-                        return 9999;
-                }
-
-		if (empty($xml))
-  		{
-			foreach (libxml_get_errors() as $error) {
-        		echo 'standings Message: ' .$error."\n";
-   			}
-   			var_dump($xml2);
-
-    		libxml_clear_errors();
-    		return 9999;
-    	}
-		
-		if(!empty($xml -> result -> rowset[0]))
-		{
-			foreach($xml -> result -> rowset[0] as $s)
+			if(!empty($xml -> result -> rowset[0]))
 			{
-				$cstandings[(string)$s["contactID"]] = array((string)$s["contactName"], (string)$s["standing"]);
-			}
-		}
-		if(!empty($xml -> result -> rowset[1]))
-		{
-			foreach($xml -> result -> rowset[1] as $s)
-			{
-				$astandings[(string)$s["contactID"]] = array((string)$s["contactName"], (string)$s["standing"]);
-			}
-		}
-
-		$count = 0;
-		if(!empty($cstandings))
-		{
-			foreach($cstandings as $i => $c)
-			{
-				if($c[1] > 0)
+				foreach($xml -> result -> rowset[0] as $s)
 				{
-					$blues[$i][0] = $c[0];
-					$blues[$i][1] = $c[1];
-					$blues[$i][2] = 0;
-					$count++;
-				}
-				elseif($c[1] < 0)
-				{
-					$reds[$i][0] = $c[0];
-					$reds[$i][1] = $c[1];
-					$reds[$i][2] = 0;
-					$count++;
+					$cstandings[(string)$s["contactID"]] = array((string)$s["contactName"], (string)$s["standing"]);
 				}
 			}
-		}
-
-		if(!empty($astandings))
-		{
-			foreach($astandings as $i => $a)
+			if(!empty($xml -> result -> rowset[1]))
 			{
-				if($a[1] > 0)
+				foreach($xml -> result -> rowset[1] as $s)
 				{
-					$blues[$i][0] = $a[0];
-					$blues[$i][2] = $a[1];
-					$count++;
-					if(!isset($blues[$i][1]))
-						$blues[$i][1] = 0;
-				}
-				elseif($a[1] < 0)
-				{
-					$reds[$i][0] = $a[0];
-					$reds[$i][2] = $a[1];
-					$count++;
-					if(!isset($reds[$i][1]))
-						$reds[$i][1] = 0;
+					$astandings[(string)$s["contactID"]] = array((string)$s["contactName"], (string)$s["standing"]);
 				}
 			}
+
+			$count = 0;
+			if(!empty($cstandings))
+			{
+				foreach($cstandings as $i => $c)
+				{
+					if($c[1] > 0)
+					{
+						$blues[$i][0] = $c[0];
+						$blues[$i][1] = $c[1];
+						$blues[$i][2] = 0;
+						$count++;
+					}
+					elseif($c[1] < 0)
+					{
+						$reds[$i][0] = $c[0];
+						$reds[$i][1] = $c[1];
+						$reds[$i][2] = 0;
+						$count++;
+					}
+				}
+			}
+
+			if(!empty($astandings))
+			{
+				foreach($astandings as $i => $a)
+				{
+					if($a[1] > 0)
+					{
+						$blues[$i][0] = $a[0];
+						$blues[$i][2] = $a[1];
+						$count++;
+						if(!isset($blues[$i][1]))
+							$blues[$i][1] = 0;
+					}
+					elseif($a[1] < 0)
+					{
+						$reds[$i][0] = $a[0];
+						$reds[$i][2] = $a[1];
+						$count++;
+						if(!isset($reds[$i][1]))
+							$reds[$i][1] = 0;
+					}
+				}
+			}
+			
+			Return array($blues, $reds, $count);
 		}
-		Return array($blues, $reds, $count);
+		elseif (($xml) && (gettype($xml) == 'integer'))
+		{
+			echo "API call error while fetching standings: \nError Code = $xml for key id = $keyid\n";
+			Return $xml;
+		}
+		else
+		{
+			echo "API System Screwed - Can't Fetch Standings : \n";
+			Return 9999;
+		}		
 	}
 
 	function get_api_characters($keyid, $vcode)
@@ -272,44 +310,41 @@ class TEAC
 		$charlist = array();
 		$post = array();
 		$post = array('keyID' => $keyid, 'vCode' => $vcode);
-		$chars = $this -> get_xml('charlist', $post);
-	
-		if( (stristr($chars, "runtime")) || (stristr($chars, "The service is unavailable")) || (empty($chars)) || (stristr($chars, "404 Not Found")) )	
+		$xml = $this -> get_xml('charlist', $post);
+
+		if (($xml) && (gettype($xml) == 'object'))
 		{
-				echo "API System Screwed - Can't fetch Toons : \n";
-				$this -> data = $chars;
-				var_dump ($chars);
-				Return 9999;
-		}
-		
-		if ( stristr($chars, "403 - Forbidden") )
-		{
-			echo "Characters API forbidden - $keyid\n";
-			Return 403;
-		}
-		
-		$this -> data = $chars;
-		$chars = $this -> xmlparse($chars, "result");
-		$chars = $this -> parse($chars);
-		if(!empty($chars))
-		{
-			$charlist = array();
-			foreach($chars as $char)
+			//var_dump($chars->result[0]->rowset[0]->row);
+			foreach ($xml->result[0]->rowset[0]->row as $char)
 			{
-				//	$chars[] = array('name' => $name, 'charid' => $charid, 'corpname' => $corpname, 'corpid' => $corpid);
-				$corpinfo = $this -> corp_info($char['corpid']); // corpname, ticker, allianceid, alliance, aticker
+				$charinfo['name']=(string)$char['name'];
+				$charinfo['corpid']=(string)$char['corporationID'];
+				$charinfo['corpname']=(string)$char['corporationName'];
+				$charinfo['charid']=(string)$char['characterID'];
+				
+				$corpinfo = $this -> corp_info((string)$char['corporationID']); // corpname, ticker, allianceid, alliance, aticker
 				if ($corpinfo == 9999)
 				{
-					$charlist = 9999;
-					return $charlist;
+					return 9999;
 				}
-				$char = array_merge($char, $corpinfo);
+				$char = array_merge($charinfo, $corpinfo);
 				$charlist[] = $char;
 			}
+			Return $charlist;
 		}
-		Return $charlist;
+		elseif (($xml) && (gettype($xml) == 'integer'))
+		{
+			echo "API call error while fetching toons: \nError Code = $xml for key id = $keyid\n";
+			Return $xml;		
+		}
+		else
+		{
+			echo "API System Screwed - Can't fetch Toons : \n";
+			Return 9999;
+		}
 	}
 
+	//TODO : Skills function needs complete overhall
 	function skills($keyid, $vcode, $charid)
 	{
 		$skills = NULL;
@@ -317,45 +352,55 @@ class TEAC
 		$sp = 0;
 		$post = array();
 		$post = array('keyID' => $keyid, 'vCode' => $vcode, 'characterID' => $charid);
-		$xml2 = '';
-		$xml2 = $this -> get_xml('charsheet', $post);
+		$xml = $this -> get_xml('charsheet', $post);
 		
-		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) || (stristr($xml2, "404 Not Found")) )
+		if (($xml) && (gettype($xml) == 'object'))
 		{
-				echo "API System Screwed - Can't Fetch Skills : \n";
-				var_dump ($xml2);
-				Return 9999;
+			foreach ($xml->result->rowset[0]->row as $skill)
+			{
+				$id = (string)$skill['typeID'];
+				$level = (string)$skill['level'];
+				$name = $skilllist[$id];
+				$skills[strtolower($name)] = $level;
+			}
+			
+			if(!empty($xml -> result -> rowset[0]))
+			{
+				//$this -> query("DELETE FROM {db_prefix}tea_character_skills WHERE charid = ". mysql_real_escape_string($charid) . " AND skill_id = 0"); 
+				//$this -> query("DELETE FROM {db_prefix}tea_character_skills WHERE charid = ". mysql_real_escape_string($charid) ); 
+				
+				foreach($xml -> result -> rowset[0] as $skill)
+				{
+					//echo "<pre>";var_dump($skill["typeID"]); echo '<hr>';
+					$skills[strtolower($skilllist[(string)$skill["typeID"]])] = (string)$skill["level"];
+					if ($xml -> result -> allianceID == 150097440)
+					{
+						$s = (string)$skill["typeID"];
+						$l = (string)$skill["level"];
+						$sp += (int)$skill["skillpoints"];
+						//var_dump($s);
+						//var_dump($l);
+						//echo "<br>";
+						$this -> query("REPLACE INTO {db_prefix}tea_character_skills (userid,charid,skill_id,level) VALUES ('".mysql_real_escape_string($keyid). "', '" . mysql_real_escape_string($charid). "', '" . mysql_real_escape_string($s). "', '" . mysql_real_escape_string($l). "')");
+					}
+				}
+				if ($xml -> result -> allianceID == 150097440)
+				{
+					$this -> query("REPLACE INTO {db_prefix}tea_character_skills (userid,charid,skill_id,level) VALUES ('".mysql_real_escape_string($keyid). "', '" . mysql_real_escape_string($charid). "', '0', '" . mysql_real_escape_string($sp). "')");
+				}
+			}
+			return $skills;
 		}
-
-		if ( stristr($xml2, "403 - Forbidden") )
+		elseif (($xml) && (gettype($xml) == 'integer'))
 		{
-			echo "Skills API forbidden - $keyid\n";
-			Return 403;
+			echo "API call error while fetching skills: \nError Code = $xml for key id = $keyid $vcode $charid\n";
+			Return $xml;
 		}
-		
-		libxml_use_internal_errors(true);
-		
-		try {
-			$xml = new SimpleXMLElement($xml2);
-		}
-		catch(Exception $e)
+		else
 		{
-			echo "skills api returning invalid xml\n";
-			return 9999;
+			echo "API System Screwed - Can't Fetch Skills : \n";
+			Return 9999;
 		}
-
-  		if (empty($xml))
-  		{
-			foreach (libxml_get_errors() as $error) {
-        			echo 'skills Message: ' .$error."\n";
-   			}
-   			var_dump($xml2);
-
-    			libxml_clear_errors();
-			return 9999;
-    		}
-		
-		return $skills;
 	}
 	
 	function roles($id, $api, $charid)
@@ -363,67 +408,36 @@ class TEAC
 		$roles = NULL;
 		$post = array();
 		$post = array('keyID' => $id, 'vCode' => $api, 'characterID' => $charid);
-		$xml2='';
+
 		//echo "getting Roles\n";
-		$xml2 = $this -> get_xml('charsheet', $post);
+		$xml = $this -> get_xml('charsheet', $post);
 	//	$xml = file_get_contents('me.xml');
 		
-		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) || (stristr($xml2, "404 Not Found")) )
+		if (($xml) && (gettype($xml) == 'object'))
 		{
-				echo "API System Screwed - Can't fetch Roles: \n";
-				var_dump ($xml2);
-				Return 9999;
-		}		
-
-		if ( stristr($xml2, "403 - Forbidden") )
-		{
-			echo "Roles API forbidden - $id\n";
-			Return 403;
-		}
-		
-		libxml_use_internal_errors(true);
-
-                try {
-                        $xml = new SimpleXMLElement($xml2);
-                }
-                catch(Exception $e)
-                {
-                        echo "roles api returning invalid xml\n";
-                        return 9999;
-                }
-
-  		if (empty($xml))
-  		{
-			foreach (libxml_get_errors() as $error) {
-        		echo 'roles Message: ' .$error."\n";
-   			}
-   			var_dump($xml2);
-    		libxml_clear_errors();
-    		return 9999;
-    	}
-		
-		/*try
-		{
-			$xml = new SimpleXMLElement($xml2);
-		}
-		catch(Exception $e)
-  		{
-  			echo 'roles Message: ' .$e->getMessage();
-  			var_dump($xml2);
-
-  		}*/
-		$rg = array(2, 3, 4, 5);
-		foreach($rg as $i)
-		{
-			if(!empty($xml -> result -> rowset[$i]))
+			$rg = array(2, 3, 4, 5);
+			foreach($rg as $i)
 			{
-				foreach($xml -> result -> rowset[$i] as $role)
+				if(!empty($xml -> result -> rowset[$i]))
 				{
-					$roles[strtolower((string)$role["roleName"])] = TRUE;
+					foreach($xml -> result -> rowset[$i] as $role)
+					{
+						$roles[strtolower((string)$role["roleName"])] = TRUE;
+					}
 				}
 			}
+			return $roles;
 		}
-		return $roles;
+		elseif (($xml) && (gettype($xml) == 'integer'))
+		{
+			echo "API call error while fetching roles: \nError Code = $xml for key id = $keyid\n";
+			Return $xml;
+		}
+		else
+		{
+			echo "API System Screwed - Can't Fetch Roles : \n";
+			Return 9999;
+		}
 	}
 
 	function titles($id, $api, $charid)
@@ -431,126 +445,64 @@ class TEAC
 		$titles='';
 		$post = array();
 		$post = array('keyID' => $id, 'vCode' => $api, 'characterID' => $charid);
-		$xml2='';
-		$xml2 = $this -> get_xml('charsheet', $post);
-			//	$xml = file_get_contents('me.xml');
-			
-		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) || (stristr($xml2, "404 Not Found")) )
-		{
-				echo "API System Screwed - Can't fetch Titles : \n";
-				var_dump ($xml2);
-				Return 9999;
-		}
 
-		if ( stristr($xml2, "403 - Forbidden") )
+		$xml = $this -> get_xml('charsheet', $post);
+		
+		if (($xml) && (gettype($xml) == 'object'))
 		{
-			echo "Titles API forbidden - $id\n";
-			Return 403;
+			if (!empty($xml -> result -> rowset[6]))
+			{
+				foreach($xml -> result -> rowset[6] as $title)
+				{
+					preg_match_all("|<[^>]+>(.*)</[^>]+>|U",$title["titleName"],$tmp, PREG_PATTERN_ORDER);
+					if (!empty($tmp[1][0]))
+					{
+						$tit = $tmp[1][0];
+					}
+					else
+					{
+						$tit = $title["titleName"];
+					}
+					$titles[strtolower((string)$tit)] = TRUE;
+				}
+			}
+			return $titles;
+		}
+		elseif (($xml) && (gettype($xml) == 'integer'))
+		{
+			echo "API call error while fetching titles: \nError Code = $xml for key id = $keyid\n";
+			Return $xml;
+		}
+		else
+		{
+			echo "API System Screwed - Can't Fetch Titles : \n";
+			Return 9999;
 		}
 		
-		libxml_use_internal_errors(true);
-
-                try {
-                        $xml = new SimpleXMLElement($xml2);
-                }
-                catch(Exception $e)
-                {
-                        echo "titles api returning invalid xml\n";
-                        return 9999;
-                }
-
-  		if (empty($xml))
-  		{
-			foreach (libxml_get_errors() as $error) {
-        		echo 'titles Message: ' .$error."\n";
-   			}
-   			var_dump($xml2);
-    		libxml_clear_errors();
-    		return 9999;
-    	}
-			
-		/*try
-		{
-			$xml = new SimpleXMLElement($xml2);
-		}
-		catch(Exception $e)
-  		{
-  			echo 'titles Message: ' .$e->getMessage();
-  			var_dump($xml2);
-
-  		}*/
-		if (!empty($xml -> result -> rowset[6]))
-		{
-			foreach($xml -> result -> rowset[6] as $title)
-			{
-				preg_match_all("|<[^>]+>(.*)</[^>]+>|U",$title["titleName"],$tmp, PREG_PATTERN_ORDER);
-				if (!empty($tmp[1][0]))
-				{
-					$tit = $tmp[1][0];
-				}
-				else
-				{
-					$tit = $title["titleName"];
-				}
-				$titles[strtolower((string)$tit)] = TRUE;
-			}
-		}
-		return $titles;
 	}
 
 	function militia($id, $api, $charid)
 	{
 		$post = array();
 		$post = array('keyID' => $id, 'vCode' => $api, 'characterID' => $charid);
-		$xml2 = '';
-		$xml2 = $this -> get_xml('facwar', $post);
+	
+		$xml = $this -> get_xml('facwar', $post);
 		
-		if( (stristr($xml2, "runtime")) || (stristr($xml2, "The service is unavailable")) || (!$xml2) || (stristr($xml2, "404 Not Found")) )
+		if (($xml) && (gettype($xml) == 'object'))
 		{
-				echo "API System Screwed - Can't fetch Militia : \n";
-				var_dump ($xml2);
-				Return 9999;
-		}		
-		
-		if ( stristr($xml2, "403 - Forbidden") )
-		{
-			echo "Militia API forbidden - $id\n";
-			Return 403;
+			$faction = $xml -> result -> factionName;
+			return $faction;
 		}
-		
-		libxml_use_internal_errors(true);
-
-                try {
-                        $xml = new SimpleXMLElement($xml2);
-                }
-                catch(Exception $e)
-                {
-                        echo "militia api returning invalid xml\n";
-                        return 9999;
-                }
-
-  		if (empty($xml))
-  		{
-			foreach (libxml_get_errors() as $error) {
-        		echo 'militia Message: ' .$error."\n";
-   			}
-   			var_dump($xml2);
-    		libxml_clear_errors();
-    		return 9999;
-    	}
-		
-		/*try
+		elseif (($xml) && (gettype($xml) == 'integer'))
 		{
-			$xml = new SimpleXMLElement($xml2);
+			echo "API call error while fetching militia: \nError Code = $xml for key id = $keyid\n";
+			Return $xml;
 		}
-		catch(Exception $e)
-  		{
-  			echo 'militia Message: ' .$e->getMessage();
-  			var_dump($xml2);
-
-  		}*/
-		$faction = $xml -> result -> factionName;
-		return $faction;
+		else
+		{
+			echo "API System Screwed - Can't Fetch Militia : \n";
+			Return 9999;
+		}
 	}
 
 	/*function get_error($data)
@@ -616,27 +568,5 @@ class TEAC
 			}
 		}
 		return $chars;
-	}
-
-	function is_valid($keyid, $vcode)
-	{
-		if(isset($this -> valid[$keyid]))
-		{
-			if($this -> valid[$keyid] == 0)
-				return FALSE;
-			else
-				Return TRUE;
-		}
-		$post = array();
-		$post = array('keyID' => $keyid, 'vCode' => $vcode);
-		$data = $this -> get_xml('keyinfo', $post);
-
-		if(stristr($data, "403 - Forbidden"))
-		{
-			$this -> valid[$keyid] = 0;
-			return FALSE;
-		}
-		$this -> valid[$keyid] = 1;
-		Return TRUE;
 	}
 }
