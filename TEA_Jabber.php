@@ -201,6 +201,8 @@ class TEA_Jabber extends TEAC
 				'<dt>Jabber Info (HTML) will display on Jabber area of profile</dt>',
 				'<dt><textarea name="tea_jabber_info" cols=120 rows=6>'.$this -> modSettings['tea_jabber_info'].'</textarea></dt>',
 				'',
+				array('select', 'tea_jabber_restricted', $groups),
+				'',
 		//		'',
 		);
 		$rules = $this -> smcFunc['db_query']('', "SELECT id, smf, jabber, nf FROM {db_prefix}tea_jabber_rules ORDER BY id");
@@ -585,6 +587,15 @@ function move(id, value)
 
 			if(!empty($usergroupssql))
 			{
+				//var_dump($this -> modSettings["tea_jabber_restricted"]);
+				if ($usergroupssql[0][0] == $this -> modSettings["tea_jabber_restricted"])
+				{
+					$this -> db -> del_user($name);
+					$this -> tea -> query("DELETE FROM {db_prefix}tea_jabber_users WHERE username = '".$name."'");
+					echo "Removing : ".$name."\n";
+					continue;
+				}
+		
 				$email = $usergroupssql[0][2];
 				$usergroups[$usergroupssql[0][0]] = true;
 				if(!empty($usergroupssql[0][1]))
@@ -627,7 +638,7 @@ function move(id, value)
 			//var_dump($jabbergs);
 			
 			if(!empty($jabbergs))
-			{
+            		{
 				if (!empty($adding_group) || !empty($removing_group))
 				{
 					//echo "Updating groups for : ".$name."\n";
@@ -637,7 +648,7 @@ function move(id, value)
 			else
 			{
 				$this -> db -> del_user($name);
-				$this -> tea -> query("DELETE FROM {db_prefix}tea_jabber_users WHERE username = '".$name."'");
+                		$this -> tea -> query("DELETE FROM {db_prefix}tea_jabber_users WHERE username = '".$name."'");
 				echo "Removing : ".$name."\n";
 			}
 		}

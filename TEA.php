@@ -23,7 +23,7 @@ class TEA extends TEAC
 		$this -> smcFunc = &$smcFunc;
 		$this -> settings = &$settings;
 
-		$this -> version = "1.3.1 r5";
+		$this -> version = "1.3.1 r6";
 
 		$permissions["tea_view_own"] = 1;
 		$permissions["tea_view_any"] = 0;
@@ -109,7 +109,7 @@ class TEA extends TEAC
 		$dsets['tea_jabber_nf'] = '#ct# #name#';
 		$dsets['tea_ts_addrule_group'] = '-1';
 		$dsets['tea_jabber_addrule_group'] = '-1';
-		$dsets['tea_groupas_restricted'] = '-1';
+		$dsets['tea_groupass_restricted'] = '-1';
 
 		foreach($dsets as $s => $v)
 		{
@@ -297,8 +297,6 @@ class TEA extends TEAC
 
 	function single($user,$force=FALSE)
 	{
-		//echo $user ."\n";
-		
 		if(isset($this -> modSettings["tea_groupass_unknown"]))
 			$mongroups[$this -> modSettings["tea_groupass_unknown"]] = TRUE;
 		else
@@ -313,6 +311,7 @@ class TEA extends TEAC
 		$cr['additional'] = '';
 		$ignore = FALSE;
 		$error = FALSE;
+		$ec = 0;
 		
 		$cgq = $this -> smcFunc['db_query']('', "SELECT id, main, additional FROM {db_prefix}tea_groups ORDER BY id");
 		$cgq = $this -> select($cgq);
@@ -349,6 +348,8 @@ class TEA extends TEAC
 				{
 					if($m[1] == 1)
 						unset($agroups[$g]);
+					if($m[1] == 0 && ($group == $this -> modSettings["tea_groupass_restricted"]))
+						unset($agroups[$g]);
 				}
 			}
 			$id = $id[0][0];
@@ -359,32 +360,48 @@ class TEA extends TEAC
 				$cr['main'] = 'Not Monitored';
 			}
 			$apiusers=array();
-			if ($force)
-			{
-				$apiuserstmp = $this -> smcFunc['db_query']('', "SELECT userid, api, status FROM {db_prefix}tea_api WHERE ID_MEMBER = {int:id}", array('id' => $id));
-			}
-			else
-			{
+			//if ($force)
+			//{
+				$apiuserstmp = $this -> smcFunc['db_query']('', "SELECT userid, api, status, errorid FROM {db_prefix}tea_api WHERE ID_MEMBER = {int:id}", array('id' => $id));
+			//}
+			//else
+			//{
+				//echo "don't get errored keys\n";
 				//$apiuserstmp = $this -> smcFunc['db_query']('', "SELECT userid, api, status FROM {db_prefix}tea_api WHERE ID_MEMBER = {int:id} AND (errorid is NULL or (errorid != 403 AND errorid != 9996))", array('id' => $id));
-				$apiuserstmp = $this -> smcFunc['db_query']('', "SELECT userid, api, status FROM {db_prefix}tea_api WHERE ID_MEMBER = {int:id} AND (errorid is NULL or (errorid not in (200,201,202,203,204,205,206,207,208,209,210,211,212,213,220,221,222,223))) ORDER BY errorid ASC", array('id' => $id));
-			}
+				//$apiuserstmp = $this -> smcFunc['db_query']('', "SELECT userid, api, status FROM {db_prefix}tea_api WHERE ID_MEMBER = {int:id} AND (errorid is NULL or (errorid not in (200,201,202,203,204,205,206,207,208,209,210,211,212,213,220,221,222,223))) ORDER BY errorid ASC", array('id' => $id));
+			//}
 			$apiusers = $this -> select($apiuserstmp);
 			
 			if(!empty($apiusers))
 			{
 				$mainmatch = FALSE;
+				//echo "getting rules<br>\n";
+				$mrules = $this -> smcFunc['db_query']('', "SELECT ruleid, `group`, andor FROM {db_prefix}tea_rules WHERE main = 1 AND enabled = 1 ORDER BY ruleid");
+				$mrules = $this -> select($mrules);
+				$arules = $this -> smcFunc['db_query']('', "SELECT ruleid, `group`, andor FROM {db_prefix}tea_rules WHERE main = 0 AND enabled = 1 ORDER BY ruleid");
+				$arules = $this -> select($arules);
+
 				foreach($apiusers as $aapiuser)
 				{
+
+					$matched = array('none', array());
 					$error=FALSE;
+					$account = TRUE;
+					$mask = TRUE;
 					$apikey = $aapiuser[1];
 					$status = $aapiuser[2];
 					$apiuser = $aapiuser[0];
-
+					$errorid = $aapiuser[3];
+					if (!$force && ( ($errorid >= 200 && $errorid <= 213) || $errorid == 220 || ($errorid >= 222 && $errorid <= 223)))
+					{
+						continue;
+					}
+					
 					$post = array();
 					$post = array('keyID' => $apiuser, 'vCode' => $apikey);
-					
-					$accnt = $this -> get_xml('keyinfo', $post);
 
+					$accnt = $this -> get_xml('keyinfo', $post);
+					
 					if (($accnt) && (gettype($accnt) == 'object'))
 					{
 						//$accnt = $this -> xmlparse($accnt, "result");
@@ -394,14 +411,95 @@ class TEA extends TEAC
 							$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = '9996', error = 'Wrong Mask', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
 							
 							//echo "Incorrect Mask - $apiuser\n";
+							if(!empty($arules) && !$ignore)
+							{
+								foreach($arules as $rule)
+								{
+									$conditions = $this -> smcFunc['db_query']('', "SELECT type, value, extra, isisnt FROM {db_prefix}tea_conditions WHERE ruleid = {int:id}",array('id' => $rule[0]));
+									$conditions = $this -> select($conditions);
+									if(!empty($conditions))
+									{
+										$match = TRUE;
+										foreach($conditions as $cond)
+										{
+											if ($cond[0] == 'error')
+											{
+												if($cond[3] == 'is' && $error)
+												{
+													if($andor == 'OR')
+														Break 2;
+													Break;
+												}
+												if($cond[3] == 'isnt' && !$error)
+												{
+													if($andor == 'OR')
+														Break 2;
+													Break;
+												}
+												else
+												{
+													$match = FALSE;
+													Break 2;
+												}
+											}
+										}
+									}
+								}
 							
+								$matched[1][] = $rule[0];
+								$agroups[$rule[1]] = $rule[1];
+								$this -> query("UPDATE {db_prefix}tea_api SET matched = 'none;".$matched[1][0]."', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+							}
+							$mask = FALSE;
 							$error = TRUE;
+							continue;
 						}	
 
 						if ($accnt->result[0]->key[0]['type']!="Account")
 						{
 							$_SESSION['tea_error'][] = "<b><font color=\"red\">Api must be of Type Character and show ALL toons ;)</font></b>";
 							$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = '9997', error = 'Not All Toons', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+							
+							if(!empty($arules) && !$ignore)
+							{
+								foreach($arules as $rule)
+								{
+									$conditions = $this -> smcFunc['db_query']('', "SELECT type, value, extra, isisnt FROM {db_prefix}tea_conditions WHERE ruleid = {int:id}",array('id' => $rule[0]));
+									$conditions = $this -> select($conditions);
+									if(!empty($conditions))
+									{
+										$match = TRUE;
+										foreach($conditions as $cond)
+										{
+											if ($cond[0] == 'error')
+											{
+												if($cond[3] == 'is' && $error)
+												{
+													if($andor == 'OR')
+														Break 2;
+													Break;
+												}
+												if($cond[3] == 'isnt' && !$error)
+												{
+													if($andor == 'OR')
+														Break 2;
+													Break;
+												}
+												else
+												{
+													$match = FALSE;
+													Break 2;
+												}
+											}
+										}
+									}
+								}
+							
+								$matched[1][] = $rule[0];
+								$agroups[$rule[1]] = $rule[1];
+								$this -> query("UPDATE {db_prefix}tea_api SET matched = 'none;".$matched[1][0]."', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+							}
+							$account = FALSE;
 							$error = TRUE;
 							Continue;
 						}
@@ -409,10 +507,57 @@ class TEA extends TEAC
 					elseif (($accnt) && (gettype($accnt) == 'integer'))
 					{
 						$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = $accnt, error = $accnt, status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+						
+						if(!empty($arules) && !$ignore)
+						{
+							foreach($arules as $rule)
+							{
+								$conditions = $this -> smcFunc['db_query']('', "SELECT type, value, extra, isisnt FROM {db_prefix}tea_conditions WHERE ruleid = {int:id}",array('id' => $rule[0]));
+								$conditions = $this -> select($conditions);
+								if(!empty($conditions))
+								{
+									$match = TRUE;
+									foreach($conditions as $cond)
+									{
+										if ($cond[0] == 'error')
+										{
+											if($cond[3] == 'is' && $error)
+											{
+												if($andor == 'OR')
+													Break 2;
+												Break;
+											}
+											if($cond[3] == 'isnt' && !$error)
+											{
+												if($andor == 'OR')
+													Break 2;
+												Break;
+											}
+											else
+											{
+												$match = FALSE;
+												Break 2;
+											}
+										}
+									}
+								}
+							}
+						
+							$matched[1][] = $rule[0];
+							$agroups[$rule[1]] = $rule[1];
+							$this -> query("UPDATE {db_prefix}tea_api SET matched = 'none;".$matched[1][0]."', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+						}
+						
+						if (($accnt == 222) || ($accnt == 203))
+						{
+							//$this -> query("UPDATE {db_prefix}tea_api SET matched = 'none;', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+							$this -> query("DELETE FROM {db_prefix}tea_characters WHERE userid = '" . mysql_real_escape_string($apiuser) . "'");
+						}
 						$chars = array('name' => NULL, 'charid' => NULL, 'corpname' => NULL, 'corpid' => NULL, 'ticker' => NULL, 'allianceid' => NULL, 'alliance' => NULL);
 						$status = 'error';
 						$error = TRUE;
-						
+						//var_dump($accnt);
+						//var_dump($apiuser);
 						if (($accnt >= 901 && $accnt <= 1000) || ($accnt >= 501 && $accnt <=532))
 							return FALSE;
 						Continue;
@@ -428,104 +573,197 @@ class TEA extends TEAC
 
 						Continue;
 					}
-					
-					if ($apikey)
-					{
-						$matched = array('none', array());
-						$chars = $this -> get_characters($apiuser, $apikey);
+					//var_dump($apikey);
 
-						if (($chars == 9999) || (empty($chars)))
+					$chars = $this -> get_characters($apiuser, $apikey);
+					//var_dump($chars);
+					if (($chars == 9999) || (empty($chars)))
+					{
+						$error = TRUE;
+						$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = 9999, error = 'Api Fault', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+						return $chars;
+					}						
+					elseif ($chars == 9996)
+					{
+						$error = TRUE;
+						//$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = 9999, error = 'Api Fault', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+						return $chars;
+					}
+					elseif (gettype($chars) == 'integer')
+					{
+						$error = TRUE;
+						$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = $chars, error = $chars, status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+
+						return $chars;
+					}
+					else //  got chars time to match rules
+					{
+						if(!$error)
+							$this -> query("UPDATE {db_prefix}tea_api SET status = 'OK', errorid=NULL, error=NULL,status_change = ".time()." WHERE ID_MEMBER = {int:id} AND userid = {int:userid}",
+						array('id' => $id, 'userid' => $apiuser));
+						// get main rules
+						//echo "getting main rules<br>\n";
+						//$rules = $this -> smcFunc['db_query']('', "SELECT ruleid, `group`, andor FROM {db_prefix}tea_rules WHERE main = 1 AND enabled = 1 ORDER BY ruleid");
+						//$rules = $this -> select($rules);
+						if(!empty($mrules) && !$ignore)
 						{
-							$error = TRUE;
-							$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = 9999, error = 'Api Fault', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
-							return $chars;
-						}						
-						elseif ($chars == 9996)
-						{
-							$error = TRUE;
-							//$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = 9999, error = 'Api Fault', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
-							return $chars;
-						}
-						elseif (gettype($chars) == 'integer')
-						{
-							$error = TRUE;
-							$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = $chars, error = $chars, status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
-							return $chars;
-						}
-						else
-						{
-							if(!$error)
-								$this -> query("UPDATE {db_prefix}tea_api SET status = 'OK', errorid=NULL, error=NULL,status_change = ".time()." WHERE ID_MEMBER = {int:id} AND userid = {int:userid}",
-							array('id' => $id, 'userid' => $apiuser));
-							// get main rules
-							//echo "getting main rules<br>\n";
-							$rules = $this -> smcFunc['db_query']('', "SELECT ruleid, `group`, andor FROM {db_prefix}tea_rules WHERE main = 1 AND enabled = 1 ORDER BY ruleid");
-							$rules = $this -> select($rules);
-							if(!empty($rules) && !$ignore)
+							foreach($mrules as $rule)
 							{
-								foreach($rules as $rule)
+								$andor = $rule[2];
+								foreach($chars as $char)
 								{
-									$andor = $rule[2];
-									foreach($chars as $char)
+									if(empty($this -> matchedchar))
+										$this -> matchedchar = $char; // just to make sure we get 1
+
+									$conditions = $this -> smcFunc['db_query']('', "SELECT type, value, extra, isisnt FROM {db_prefix}tea_conditions WHERE ruleid = {int:id}",
+									array('id' => $rule[0]));
+									$conditions = $this -> select($conditions);
+									if(!empty($conditions))
 									{
-										if(empty($this -> matchedchar))
-											$this -> matchedchar = $char; // just to make sure we get 1
-	
-										$conditions = $this -> smcFunc['db_query']('', "SELECT type, value, extra, isisnt FROM {db_prefix}tea_conditions WHERE ruleid = {int:id}",
-										array('id' => $rule[0]));
-										$conditions = $this -> select($conditions);
-										if(!empty($conditions))
+										$match = TRUE;
+										foreach($conditions as $cond)
 										{
-											$match = TRUE;
-											foreach($conditions as $cond)
+											Switch($cond[0])
 											{
-												Switch($cond[0])
-												{
-													case 'corp':
-														if($cond[3] == 'is' && $char['corpid'] == $cond[1])
+												case 'corp':
+													if($cond[3] == 'is' && $char['corpid'] == $cond[1])
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													elseif($cond[3] == 'isnt' && $char['corpid'] != $cond[1])
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													else
+													{
+														$match = FALSE;
+														Break 2;
+													}
+												case 'ceo':
+													if ($cond[3] == 'is' && $char['allianceid'] == $cond[1])
+													{
+														$corpid = $this -> corp_info($char['corpid']);
+														if (gettype($corpid) == 'integer')  // == 9999 || $corpid == 403)
 														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														elseif($cond[3] == 'isnt' && $char['corpid'] != $cond[1])
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														else
-														{
+															$ec = $corpid;
 															$match = FALSE;
 															Break 2;
+															//return $corpid;
 														}
-													case 'ceo':
-														if ($cond[3] == 'is' && $char['allianceid'] == $cond[1])
+														$ceoid = $corpid['ceoid'];
+														if ($char['charid'] == $ceoid)
 														{
-															$corpid = $this -> corp_info($char['corpid']);
-															if (gettype($corpid) == 'integer')  // == 9999 || $corpid == 403)
-																return $corpid;
-															$ceoid = $corpid['ceoid'];
-															if ($char['charid'] == $ceoid)
+															Break;
+														}
+														$amatch = FALSE;
+														Break;
+													}
+													else
+													{
+														$amatch = FALSE;
+														Break 2;
+													}	
+												case 'alliance':
+													if($cond[3] == 'is' && $char['allianceid'] == $cond[1])
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													elseif($cond[3] == 'isnt' && $char['allianceid'] != $cond[1])
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													else
+													{
+														$match = FALSE;
+														Break 2;
+													}
+												case 'blue':
+													if($cond[3] == 'is' && (isset($this -> blues[$char['corpid']]) || isset($this -> blues[$char['allianceid']])))
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													elseif($cond[3] == 'isnt' && (!isset($this -> blues[$char['corpid']]) && !isset($this -> blues[$char['allianceid']])))
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													else
+													{
+														$match = FALSE;
+														Break 2;
+													}
+												case 'red':
+													if($cond[3] == 'is' && (isset($this -> reds[$char['corpid']]) || isset($this -> reds[$char['allianceid']])))
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													elseif($cond[3] == 'isnt' && (!isset($this -> reds[$char['corpid']]) && !isset($this -> reds[$char['allianceid']])))
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													else
+													{
+														$match = FALSE;
+														Break 2;
+													}
+												case 'error':
+													if($cond[3] == 'is' && $error)
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													if($cond[3] == 'isnt' && !$error)
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													else
+													{
+														$match = FALSE;
+														Break 2;
+													}
+												case 'skill':
+													if($cond[3] == 'is')
+													{
+														$skills = $this -> skill_list($apiuser, $apikey, $char['charid']);
+														if (gettype($skills) == 'integer')// == 9999 || $skills == 403)
+														{
+															$ec = $skills;
+															$match = FALSE;
+															Break 2;
+															//return $skills;
+														}
+														if(strstr($cond[1], '%'))
+														{
+															$cond[1] = str_replace('%', '(.+)', $cond[1]);
+															foreach($skills as $skill => $level)
 															{
-																Break;
+																if(preg_match("/".$cond[1]."/i", $skill) && $level >= $cond[2])
+																{
+																	if($andor == 'OR')
+																		Break 3;
+																	Break 2;
+																}
 															}
-															$amatch = FALSE;
-															Break;
 														}
-														else
-														{
-															$amatch = FALSE;
-															Break 2;
-														}	
-													case 'alliance':
-														if($cond[3] == 'is' && $char['allianceid'] == $cond[1])
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														elseif($cond[3] == 'isnt' && $char['allianceid'] != $cond[1])
+														if(isset($skills[strtolower($cond[1])]) && $skills[strtolower($cond[1])] >= $cond[2])
 														{
 															if($andor == 'OR')
 																Break 2;
@@ -536,69 +774,344 @@ class TEA extends TEAC
 															$match = FALSE;
 															Break 2;
 														}
-													case 'blue':
-														if($cond[3] == 'is' && (isset($this -> blues[$char['corpid']]) || isset($this -> blues[$char['allianceid']])))
+													}
+													elseif($cond[3] == 'isnt')
+													{
+														$skills = $this -> skill_list($apiuser, $apikey, $char['charid']);
+														if (gettype($skills) == 'integer') // == 9999 || $skills == 403)
 														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														elseif($cond[3] == 'isnt' && (!isset($this -> blues[$char['corpid']]) && !isset($this -> blues[$char['allianceid']])))
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														else
-														{
+															$ec = $skills;
 															$match = FALSE;
 															Break 2;
+															//return $skills;
 														}
-													case 'red':
-														if($cond[3] == 'is' && (isset($this -> reds[$char['corpid']]) || isset($this -> reds[$char['allianceid']])))
+														if(strstr($cond[1], '%'))
 														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														elseif($cond[3] == 'isnt' && (!isset($this -> reds[$char['corpid']]) && !isset($this -> reds[$char['allianceid']])))
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														else
-														{
-															$match = FALSE;
-															Break 2;
-														}
-													case 'error':
-														if($cond[3] == 'is' && $error)
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														if($cond[3] == 'isnt' && !$error)
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														else
-														{
-															$match = FALSE;
-															Break 2;
-														}
-													case 'skill':
-														if($cond[3] == 'is')
-														{
-															$skills = $this -> skill_list($apiuser, $apikey, $char['charid']);
-															if (gettype($skills) == 'integer')// == 9999 || $skills == 403)
-																return $skills;
-															if(strstr($cond[1], '%'))
+															$cond[1] = str_replace('%', '(.+)', $cond[1]);
+															if(!empty($skills))
 															{
-																$cond[1] = str_replace('%', '(.+)', $cond[1]);
+																foreach($skills as $skill => $level)
+																{
+																	if(preg_match("/".$cond[1]."/i", $skill) && $level >= $cond[2])
+																	{
+																		$skillmatch = TRUE;
+																	}
+																}
+															}
+															if(!$skillmatch)
+															{
+																if($andor == 'OR')
+																	Break 3;
+																Break 2;
+															}
+														}
+														if(!(isset($skills[strtolower($cond[1])]) && $skills[strtolower($cond[1])] >= $cond[2]))
+														{
+															if($andor == 'OR')
+																Break 2;
+															Break;
+														}
+														else
+														{
+															$match = FALSE;
+															Break 2;
+														}
+													}
+												case 'role':
+													$roles = $this -> roles($apiuser, $apikey, $char['charid']);
+													if (gettype($roles) == 'integer') //9999 || $roles == 403)
+													{
+														$ec = $roles;
+														$match = FALSE;
+														Break 2;
+														//return $roles;
+													}
+													if($cond[3] == 'is' && isset($roles['role'.strtolower($cond[1])]))
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													elseif($cond[3] == 'isnt' && !isset($roles['role'.strtolower($cond[1])]))
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													else
+													{
+														$match = FALSE;
+														Break 2;
+													}
+												case 'title':
+													$titles = $this -> titles($apiuser, $apikey, $char['charid']);
+													if (gettype($titles) == 'integer') //9999 || $titles == 403)
+													{
+														$ec = $titles;
+														$match = FALSE;
+														Break 2;
+														//return $titles;
+													}
+													if($cond[3] == 'is' && isset($titles[strtolower($cond[1])]))
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													elseif($cond[3] == 'isnt' && !isset($titles[strtolower($cond[1])]))
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													else
+													{
+														$match = FALSE;
+														Break 2;
+													}
+												case 'militia':
+													$militia = $this -> militia($apiuser, $apikey, $char['charid']);
+													if (gettype($militia) == 'integer') //9999 || $militia == 403)
+													{
+														$ec = $militia;
+														$match = FALSE;
+														Break 2;
+														//return $militia;
+													}
+													if($cond[3] == 'is' && $militia == $cond[1])
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													elseif($cond[3] == 'isnt' && $militia != $cond[1])
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													else
+													{
+														$match = FALSE;
+														Break 2;
+													}
+												case 'valid':
+													if($cond[3] == 'is')
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													else
+													{
+														$match = FALSE;
+														Break 2;
+													}
+												Default:
+													$match = FALSE;
+													Break 2;
+											}
+										}
+										if($match)
+										{
+											$this -> matchedchar = $char;
+											$this -> query("UPDATE {db_prefix}members SET ID_GROUP = {int:idg} WHERE ID_MEMBER = {int:id}",
+											array('idg' => $rule[1], 'id' => $id));
+											//if (!$error)
+											if($error)
+												$this -> query("UPDATE {db_prefix}tea_api SET status = 'red', status_change = {int:time} WHERE ID_MEMBER = {int:id} AND status = 'OK'",
+											array('time' => time(), 'id' => $id));
+											$matched[0] = $rule[0];
+											$cr['main'] = $rule[0];
+											$mainmatch = TRUE;
+											Break 2;
+										}
+									}
+								}
+							}
+						}
+						
+						// get additional
+						//echo "getting additional rules<br>\n";
+						//$rules = $this -> smcFunc['db_query']('', "SELECT ruleid, `group`, andor FROM {db_prefix}tea_rules WHERE main = 0 AND enabled = 1 ORDER BY ruleid");
+			
+						//$rules = $this -> select($rules);
+						//$rules = '';
+						if(!empty($arules))
+						{
+							foreach($arules as $rule)
+							{
+								$andor = $rule[2];
+								foreach($chars as $char)
+								{
+									$conditions = $this -> smcFunc['db_query']('', "SELECT type, value, extra, isisnt FROM {db_prefix}tea_conditions WHERE ruleid = {int:ruleid}", array('ruleid' => $rule[0]));
+									$conditions = $this -> select($conditions);
+									$process = true;
+									if ($group == $this -> modSettings["tea_groupass_restricted"])
+									{
+										$process = false;
+										foreach ($conditions as $rest)
+										{
+											//var_dump($rest[0]);
+											switch($rest[0])
+											{
+												case 'corp':
+													$process = true;
+													break;
+												case 'alliance':
+													$process = false;
+													break 2;
+												case 'ceo':
+													$process = false;
+													break 2;
+											}
+										}
+										//echo "\n";
+										//var_dump($process);
+										//echo "\n-----------------------------\n";
+									}
+											//}
+									if(!empty($conditions) && $process)
+									{
+										$amatch = TRUE;
+
+										foreach($conditions as $cond)
+										{
+											Switch($cond[0])
+											{
+												case 'corp':
+													if($cond[3] == 'is' && $char['corpid'] == $cond[1])
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													elseif($cond[3] == 'isnt' && $char['corpid'] != $cond[1])
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													else
+													{
+														
+														$amatch = FALSE;
+														Break 2;
+													}
+												case 'ceo':
+													if ($cond[3] == 'is' && $char['allianceid'] == $cond[1])
+													{
+														$corpid = $this -> corp_info($char['corpid']);
+														if (gettype($corpid) == 'integer') //9999 || $corpid == 403)
+														{
+															$ec = $corpid;
+															$amatch = FALSE;
+															Break 2;
+															//return $corpid;
+														}
+														$ceoid = $corpid['ceoid'];
+														if ($char['charid'] == $ceoid)
+														{
+															Break;
+														}
+														$amatch = FALSE;
+														Break;
+													}
+													else
+													{
+														$amatch = FALSE;
+														Break 2;
+													}	
+												case 'alliance':
+													if($cond[3] == 'is' && $char['allianceid'] == $cond[1])
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													elseif($cond[3] == 'isnt' && $char['allianceid'] != $cond[1])
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													else
+													{
+														$amatch = FALSE;
+														Break 2;
+													}
+												case 'blue':
+													if($cond[3] == 'is' && (isset($this -> blues[$char['corpid']]) || isset($this -> blues[$char['allianceid']])))
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													elseif($cond[3] == 'isnt' && (!isset($this -> blues[$char['corpid']]) && !isset($this -> blues[$char['allianceid']])))
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													else
+													{
+														$amatch = FALSE;
+														Break 2;
+													}
+												case 'red':
+													if($cond[3] == 'is' && (isset($this -> reds[$char['corpid']]) || isset($this -> reds[$char['allianceid']])))
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													elseif($cond[3] == 'isnt' && (!isset($this -> reds[$char['corpid']]) && !isset($this -> reds[$char['allianceid']])))
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													else
+													{
+														$amatch = FALSE;
+														Break 2;
+													}
+												case 'error':
+													if($cond[3] == 'is' && $error)
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													if($cond[3] == 'isnt' && !$error)
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													else
+													{
+														$amatch = FALSE;
+														Break 2;
+													}
+												case 'skill':
+													//	echo "<pre>"; var_dump($cond);die;
+													if($cond[3] == 'is')
+													{
+														$skills = $this -> skill_list($apiuser, $apikey, $char['charid']);
+														if (gettype($skills) == 'integer') //9999 || $skills == 403)
+														{
+															$ec = $skills;
+															$amatch = FALSE;
+															Break 2;
+															//return $skills;
+														}
+
+														if(strstr($cond[1], '%'))
+														{
+															$cond[1] = str_replace('%', '(.+)', $cond[1]);
+															if(!empty($skills))
+															{
 																foreach($skills as $skill => $level)
 																{
 																	if(preg_match("/".$cond[1]."/i", $skill) && $level >= $cond[2])
@@ -609,66 +1122,48 @@ class TEA extends TEAC
 																	}
 																}
 															}
-															if(isset($skills[strtolower($cond[1])]) && $skills[strtolower($cond[1])] >= $cond[2])
-															{
-																if($andor == 'OR')
-																	Break 2;
-																Break;
-															}
-															else
-															{
-																$match = FALSE;
-																Break 2;
-															}
 														}
-														elseif($cond[3] == 'isnt')
+																													
+														if(isset($skills[strtolower($cond[1])]) && $skills[strtolower($cond[1])] >= $cond[2])
 														{
-															$skills = $this -> skill_list($apiuser, $apikey, $char['charid']);
-															if (gettype($skills) == 'integer') // == 9999 || $skills == 403)
-																return $skills;
-															if(strstr($cond[1], '%'))
+															if($andor == 'OR')
+																Break 2;
+															Break;
+														}
+														else
+														{
+															$amatch = FALSE;
+															Break 2;
+														}
+													}
+													elseif($cond[3] == 'isnt')
+													{
+														$skills = $this -> skill_list($apiuser, $apikey, $char['charid']);
+														if (gettype($skills) == 'integer') //9999 || $skills == 403)
+														{
+															$ec = $skills;
+															$amatch = FALSE;
+															Break 2;
+															//return $skills;
+														}
+														if(strstr($cond[1], '%'))
+														{
+															$cond[1] = str_replace('%', '(.+)', $cond[1]);
+															foreach($skills as $skill => $level)
 															{
-																$cond[1] = str_replace('%', '(.+)', $cond[1]);
-																if(!empty($skills))
+																if(preg_match("/".$cond[1]."/i", $skill) && $level >= $cond[2])
 																{
-																	foreach($skills as $skill => $level)
-																	{
-																		if(preg_match("/".$cond[1]."/i", $skill) && $level >= $cond[2])
-																		{
-																			$skillmatch = TRUE;
-																		}
-																	}
-																}
-																if(!$skillmatch)
-																{
-																	if($andor == 'OR')
-																		Break 3;
-																	Break 2;
+																	$skillmatch = TRUE;
 																}
 															}
-															if(!(isset($skills[strtolower($cond[1])]) && $skills[strtolower($cond[1])] >= $cond[2]))
+															if(!$skillmatch)
 															{
 																if($andor == 'OR')
-																	Break 2;
-																Break;
-															}
-															else
-															{
-																$match = FALSE;
+																	Break 3;
 																Break 2;
 															}
 														}
-													case 'role':
-														$roles = $this -> roles($apiuser, $apikey, $char['charid']);
-														if (gettype($roles) == 'integer') //9999 || $roles == 403)
-															return $roles;
-														if($cond[3] == 'is' && isset($roles['role'.strtolower($cond[1])]))
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														elseif($cond[3] == 'isnt' && !isset($roles['role'.strtolower($cond[1])]))
+														if(!(isset($skills[strtolower($cond[1])]) && $skills[strtolower($cond[1])] >= $cond[2]))
 														{
 															if($andor == 'OR')
 																Break 2;
@@ -676,403 +1171,138 @@ class TEA extends TEAC
 														}
 														else
 														{
-															$match = FALSE;
+															$amatch = FALSE;
 															Break 2;
 														}
-													case 'title':
-														$titles = $this -> titles($apiuser, $apikey, $char['charid']);
-														if (gettype($titles) == 'integer') //9999 || $titles == 403)
-															return $titles;
-														if($cond[3] == 'is' && isset($titles[strtolower($cond[1])]))
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														elseif($cond[3] == 'isnt' && !isset($titles[strtolower($cond[1])]))
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														else
-														{
-															$match = FALSE;
-															Break 2;
-														}
-													case 'militia':
-														$militia = $this -> militia($apiuser, $apikey, $char['charid']);
-														if (gettype($militia) == 'integer') //9999 || $militia == 403)
-															return $militia;
-														if($cond[3] == 'is' && $militia == $cond[1])
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														elseif($cond[3] == 'isnt' && $militia != $cond[1])
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														else
-														{
-															$match = FALSE;
-															Break 2;
-														}
-													case 'valid':
-														if($cond[3] == 'is')
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														else
-														{
-															$match = FALSE;
-															Break 2;
-														}
-													Default:
-														$match = FALSE;
+													}
+												case 'role':
+													$roles = $this -> roles($apiuser, $apikey, $char['charid']);
+													if (gettype($roles) == 'integer') //9999 || $roles == 403)
+													{
+														$ec = $roles;
+														$amatch=FALSE;
 														Break 2;
-												}
-											}
-											if($match)
-											{
-												$this -> matchedchar = $char;
-												$this -> query("UPDATE {db_prefix}members SET ID_GROUP = {int:idg} WHERE ID_MEMBER = {int:id}",
-												array('idg' => $rule[1], 'id' => $id));
-												//if (!$error)
-												if($error)
-													$this -> query("UPDATE {db_prefix}tea_api SET status = 'red', status_change = {int:time} WHERE ID_MEMBER = {int:id} AND status = 'OK'",
-												array('time' => time(), 'id' => $id));
-												$matched[0] = $rule[0];
-												$cr['main'] = $rule[0];
-												$mainmatch = TRUE;
-												Break 2;
-											}
-										}
-									}
-								}
-							}
-							
-							// get additional
-							//echo "getting additional rules<br>\n";
-							$rules = $this -> smcFunc['db_query']('', "SELECT ruleid, `group`, andor FROM {db_prefix}tea_rules WHERE main = 0 AND enabled = 1 ORDER BY ruleid");
-				
-							$rules = $this -> select($rules);
-							//$rules = '';
-							if(!empty($rules))
-							{
-								foreach($rules as $rule)
-								{
-									$andor = $rule[2];
-									foreach($chars as $char)
-									{
-										$conditions = $this -> smcFunc['db_query']('', "SELECT type, value, extra, isisnt FROM {db_prefix}tea_conditions WHERE ruleid = {int:ruleid}", array('ruleid' => $rule[0]));
-										$conditions = $this -> select($conditions);
-										if(!empty($conditions))
-										{
-											$amatch = TRUE;
-											foreach($conditions as $cond)
-											{
-												Switch($cond[0])
-												{
-													case 'corp':
-														if($cond[3] == 'is' && $char['corpid'] == $cond[1])
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														elseif($cond[3] == 'isnt' && $char['corpid'] != $cond[1])
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														else
-														{
-															
-															$amatch = FALSE;
+														//return $roles;
+													}
+													if($cond[3] == 'is' && isset($roles['role'.strtolower($cond[1])]))
+													{
+														if($andor == 'OR')
 															Break 2;
-														}
-													case 'ceo':
-														if ($cond[3] == 'is' && $char['allianceid'] == $cond[1])
-														{
-															$corpid = $this -> corp_info($char['corpid']);
-															if (gettype($corpid) == 'integer') //9999 || $corpid == 403)
-																return $corpid;
-															$ceoid = $corpid['ceoid'];
-															if ($char['charid'] == $ceoid)
-															{
-																Break;
-															}
-															$amatch = FALSE;
-															Break;
-														}
-														else
-														{
-															$amatch = FALSE;
+														Break;
+													}
+													elseif($cond[3] == 'isnt' && !isset($roles['role'.strtolower($cond[1])]))
+													{
+														if($andor == 'OR')
 															Break 2;
-														}	
-													case 'alliance':
-														if($cond[3] == 'is' && $char['allianceid'] == $cond[1])
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														elseif($cond[3] == 'isnt' && $char['allianceid'] != $cond[1])
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														else
-														{
-															$amatch = FALSE;
-															Break 2;
-														}
-													case 'blue':
-														if($cond[3] == 'is' && (isset($this -> blues[$char['corpid']]) || isset($this -> blues[$char['allianceid']])))
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														elseif($cond[3] == 'isnt' && (!isset($this -> blues[$char['corpid']]) && !isset($this -> blues[$char['allianceid']])))
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														else
-														{
-															$amatch = FALSE;
-															Break 2;
-														}
-													case 'red':
-														if($cond[3] == 'is' && (isset($this -> reds[$char['corpid']]) || isset($this -> reds[$char['allianceid']])))
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														elseif($cond[3] == 'isnt' && (!isset($this -> reds[$char['corpid']]) && !isset($this -> reds[$char['allianceid']])))
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														else
-														{
-															$amatch = FALSE;
-															Break 2;
-														}
-													case 'error':
-														if($cond[3] == 'is' && $error)
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														if($cond[3] == 'isnt' && !$error)
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														else
-														{
-															$amatch = FALSE;
-															Break 2;
-														}
-													case 'skill':
-														//	echo "<pre>"; var_dump($cond);die;
-														if($cond[3] == 'is')
-														{
-															$skills = $this -> skill_list($apiuser, $apikey, $char['charid']);
-															if (gettype($skills) == 'integer') //9999 || $skills == 403)
-																return $skills;
-
-															if(strstr($cond[1], '%'))
-															{
-																$cond[1] = str_replace('%', '(.+)', $cond[1]);
-																if(!empty($skills))
-																{
-																	foreach($skills as $skill => $level)
-																	{
-																		if(preg_match("/".$cond[1]."/i", $skill) && $level >= $cond[2])
-																		{
-																			if($andor == 'OR')
-																				Break 3;
-																			Break 2;
-																		}
-																	}
-																}
-															}
-																														
-															if(isset($skills[strtolower($cond[1])]) && $skills[strtolower($cond[1])] >= $cond[2])
-															{
-																if($andor == 'OR')
-																	Break 2;
-																Break;
-															}
-															else
-															{
-																$amatch = FALSE;
-																Break 2;
-															}
-														}
-														elseif($cond[3] == 'isnt')
-														{
-															$skills = $this -> skill_list($apiuser, $apikey, $char['charid']);
-															if (gettype($skills) == 'integer') //9999 || $skills == 403)
-																return $skills;
-															if(strstr($cond[1], '%'))
-															{
-																$cond[1] = str_replace('%', '(.+)', $cond[1]);
-																foreach($skills as $skill => $level)
-																{
-																	if(preg_match("/".$cond[1]."/i", $skill) && $level >= $cond[2])
-																	{
-																		$skillmatch = TRUE;
-																	}
-																}
-																if(!$skillmatch)
-																{
-																	if($andor == 'OR')
-																		Break 3;
-																	Break 2;
-																}
-															}
-															if(!(isset($skills[strtolower($cond[1])]) && $skills[strtolower($cond[1])] >= $cond[2]))
-															{
-																if($andor == 'OR')
-																	Break 2;
-																Break;
-															}
-															else
-															{
-																$amatch = FALSE;
-																Break 2;
-															}
-														}
-													case 'role':
-														$roles = $this -> roles($apiuser, $apikey, $char['charid']);
-														if (gettype($roles) == 'integer') //9999 || $roles == 403)
-															return $skills;
-														if($cond[3] == 'is' && isset($roles['role'.strtolower($cond[1])]))
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														elseif($cond[3] == 'isnt' && !isset($roles['role'.strtolower($cond[1])]))
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														else
-														{
-															$amatch = FALSE;
-															Break 2;
-														}
-													case 'title':
-														$titles = $this -> titles($apiuser, $apikey, $char['charid']);
-														if (gettype($titles) == 'integer') //9999 || $titles == 403)
-															return $titles;
-														if($cond[3] == 'is' && isset($titles[strtolower($cond[1])]))
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														elseif($cond[3] == 'isnt' && !isset($titles[strtolower($cond[1])]))
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														else
-														{
-															$amatch = FALSE;
-															Break 2;
-														}
-													case 'militia':
-														$militia = $this -> militia($apiuser, $apikey, $char['charid']);
-														if (gettype($militia) == 'integer') //9999 || $militia == 403)
-																return $militia;
-														if($cond[3] == 'is' && $militia == $cond[1])
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														elseif($cond[3] == 'isnt' && $militia != $cond[1])
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														else
-														{
-															$amatch = FALSE;
-															Break 2;
-														}
-													case 'valid':
-														if($cond[3] == 'is')
-														{
-															if($andor == 'OR')
-																Break 2;
-															Break;
-														}
-														else
-														{
-															$amatch = FALSE;
-															Break 2;
-														}
-													Default:
+														Break;
+													}
+													else
+													{
 														$amatch = FALSE;
 														Break 2;
-												}
+													}
+												case 'title':
+													$titles = $this -> titles($apiuser, $apikey, $char['charid']);
+													if (gettype($titles) == 'integer') //9999 || $titles == 403)
+													{
+														$ec = $titles;
+														$amatch=FALSE;
+														Break 2;
+														//return $titles;
+													}
+
+													if($cond[3] == 'is' && isset($titles[strtolower($cond[1])]))
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													elseif($cond[3] == 'isnt' && !isset($titles[strtolower($cond[1])]))
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													else
+													{
+														$amatch = FALSE;
+														Break 2;
+													}
+												case 'militia':
+													$militia = $this -> militia($apiuser, $apikey, $char['charid']);
+													if (gettype($militia) == 'integer') //9999 || $militia == 403)
+													{
+														$ec = $militia;
+														$amatch = FALSE;
+														Break 2;
+														//return $militia;
+													}
+													if($cond[3] == 'is' && $militia == $cond[1])
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													elseif($cond[3] == 'isnt' && $militia != $cond[1])
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													else
+													{
+														$amatch = FALSE;
+														Break 2;
+													}
+												case 'valid':
+													if($cond[3] == 'is')
+													{
+														if($andor == 'OR')
+															Break 2;
+														Break;
+													}
+													else
+													{
+														$amatch = FALSE;
+														Break 2;
+													}
+												Default:
+													$amatch = FALSE;
+													Break 2;
 											}
-											if($amatch)
-											{
-												$agroups[$rule[1]] = $rule[1];
-												$matched[1][] = $rule[0];
-												Break;
-											}
+										}
+										if($amatch)
+										{
+											$agroups[$rule[1]] = $rule[1];
+											$matched[1][] = $rule[0];
+											Break;
 										}
 									}
 								}
 							}
-
-							$cr['additional'] = array_unique($matched[1]);
-							$matched[1] = implode(',', array_unique($matched[1]));
-							$matched = implode(';', $matched);
-							if(!$error)
-								$this -> query("UPDATE {db_prefix}tea_api SET status = 'checked', matched = '".$matched."', errorid = NULL, error = NULL, status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
-							else
-								$this -> query("UPDATE {db_prefix}tea_api SET matched = '".$matched."', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
 						}
-					}
-					else
-					{
-						//var_dump($apiuser);
-						$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = '9999', error = 'Missing API', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+
+						$cr['additional'] = array_unique($matched[1]);
+						$matched[1] = implode(',', array_unique($matched[1]));
+						$matched = implode(';', $matched);
+						if(!$error)
+							$this -> query("UPDATE {db_prefix}tea_api SET status = 'checked', matched = '".$matched."', errorid = NULL, error = NULL, status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+						else
+							$this -> query("UPDATE {db_prefix}tea_api SET matched = '".$matched."', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
 					}
 				}
-				if(!$mainmatch && !$ignore)
+				//var_dump($mainmatch);
+				//var_dump($matched);
+				if(!$mainmatch && !$ignore && $account && $mask)
 				{
 					// doesnt match any rule, remove group
 					$this -> query("UPDATE {db_prefix}members SET ID_GROUP = 0 WHERE ID_MEMBER = {int:id}",
 					array('id' => $id));
 					if(!$error)
 						$this -> query("UPDATE {db_prefix}tea_api SET status = 'nomatch', status_change = {int:time} WHERE ID_MEMBER = {int:id} AND status = 'OK'",
+						array('time' => time(), 'id' => $id));
+					else
+						$this -> query("UPDATE {db_prefix}tea_api SET matched = 'none;', status_change = {int:time} WHERE ID_MEMBER = {int:id}",
 						array('time' => time(), 'id' => $id));
 					$cr['main'] = $txt['tea_nomatch'];
 				}
@@ -1088,16 +1318,21 @@ class TEA extends TEAC
 					else
 						$group = 0;
 					$this -> query("UPDATE {db_prefix}members SET ID_GROUP = {int:group} WHERE ID_MEMBER = {int:id}", array('id' => $id, 'group' => $group));
+					
+					$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = '9999', error = 'No Valid API', status_change = ".time()." WHERE ID_MEMBER = ".$id);
 					//if ($this -> modSettings['tea_regreq'])
 					//	$this -> query("UPDATE {db_prefix}members SET additional_groups = 'null' WHERE ID_MEMBER = {int:id}", array('id' => $id));
 					$cr['main'] = $txt['tea_noapi'];
 				}
 			}
 			$agroups = implode(',', $agroups);
+			//var_dump($agroups);
 			// change additional groups
 			$this -> query("UPDATE {db_prefix}members SET additional_groups = '".$agroups."' WHERE ID_MEMBER = {int:id}", array('id' => $id));
 			//var_dump($cr);die;
 			//return $user;
+			if ($ec != 0)
+				$cr = $ec;
 			return $cr;
 			//$this -> query("UPDATE {db_prefix}members SET ID_GROUP = ".$rule[1]." WHERE ID_MEMBER = ".$id);
 			//$this -> query("UPDATE {db_prefix}tea_api SET status = 'red', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND status = 'OK'");
@@ -1110,15 +1345,14 @@ class TEA extends TEAC
 		//var_dump(get_class_methods($this));
 		
 		$chars = $this -> get_api_characters($userid, $api);
+		$this -> query("DELETE FROM {db_prefix}tea_characters WHERE userid = '" . mysql_real_escape_string($userid) . "'");
+		
 		if ((gettype($chars) == 'integer') && (($chars == 9999) || ($chars >= 200 && $chars <=223)))
 		{
-			$this -> query("DELETE FROM {db_prefix}tea_characters WHERE userid = '" . mysql_real_escape_string($userid) . "'");
 			Return $chars;
 		}
 		if(!empty($chars))
 		{
-			$this -> query("DELETE FROM {db_prefix}tea_characters WHERE userid = '" . mysql_real_escape_string($userid) . "'");
-			
 			foreach($chars as $char)
 			{
 				$user = $this -> smcFunc['db_query']('', "SELECT * FROM {db_prefix}tea_characters WHERE charid = ".mysql_real_escape_string($char['charid'])." and userid != ".mysql_real_escape_string($userid));
@@ -1256,6 +1490,21 @@ class TEA extends TEAC
 		return $all;
 	}
 
+	function get_ali_acc_chars($userid)
+	{
+			$charlist = NULL;
+			$chars = $this -> smcFunc['db_query']('', "SELECT charid, name, corp_ticker, corp, alliance, alliance_ticker FROM {db_prefix}tea_characters WHERE userid = {int:id} and alliance='Get Off My Lawn'", array('id' => $userid));
+			$chars = $this -> select($chars);
+			if(!empty($chars))
+			{
+					foreach($chars as $char)
+					{
+							$charlist[$char[0]] = array($char[1], $char[2], $char[3], $char[4], $char[5]);
+					}
+			}
+			Return $charlist;
+	}
+	
 	function get_acc_chars($userid)
 	{
 		$charlist = array();
@@ -1308,7 +1557,15 @@ class TEA extends TEAC
 			foreach($users as $user)
 			{
 				$this -> log .= '<tr><td>'.$user[1].'</td>';
-				$cr = $this -> single($user[0]);
+				if ($force === FALSE)
+				{
+					$cr = $this -> single($user[0]);
+				}
+				else
+				{
+					$cr = $this -> single($user[0],TRUE);
+				}
+				
 				$user_list[$user[0]]=$cr;
 				$count++;
 				if ( $cr == 9999 )
@@ -1771,6 +2028,8 @@ class TEA extends TEAC
 			'',
 			'<dt>'.$this -> txt['tea_group_settings'].'</dt>',
 				array('select', 'tea_groupass_unknown', $groups),
+			'',
+				array('select', 'tea_groupass_restricted', $groups),
 			'',
 				array('text', 'tea_api_server', 40),
 		);
@@ -3121,6 +3380,7 @@ if(!empty($char))
 			foreach($user as $u)
 			{
 				$characters = $this -> get_acc_chars($u[0]);
+				$alliance_chars = $this -> get_ali_acc_chars($u[0]);
 				$adits = NULL;
 				$matched = explode(";", $u[3], 2);
 				if(is_numeric($matched[0]))
@@ -3292,7 +3552,7 @@ function postFileReady()
 		if ( !empty($_POST['tea_user_id']) || !empty($_POST['tea_user_api']) || $this -> modSettings['tea_regreq'] )
 		{
 			$chars = $this -> get_characters_reg_check($_POST['tea_user_id'], $_POST['tea_user_api']);
-			if ((empty($chars)) || ($chars == 9998)) // invalid api
+			if ((empty($chars)) || (gettype($chars) == 'integer')) // invalid api
 			{
 				$ret = $this -> txt['tea_regreq_error'];
 				if(empty($ret))
@@ -3515,8 +3775,10 @@ function template_edittea()
 			$charlist = array();
 			foreach($teainfo as $info)
 			{
-				foreach($info['charnames'] as $i => $char)
-					$charlist[$i] = $char[0];
+				if (!empty($info['ali_charnames'])) {
+					foreach($info['ali_charnames'] as $i => $char)
+						$charlist[$i] = $char[0];
+				}			
 			}
 		}
 		echo '<tr><td>'.$txt['tea_charid'].'</td><td>';

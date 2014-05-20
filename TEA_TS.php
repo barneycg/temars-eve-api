@@ -81,7 +81,7 @@ class TEA_TS extends TEAC
 
 	function settings($scripturl)
 	{
-		if(isset($_GET['save']))
+		/*if(isset($_GET['save']))
 		{
 			$charid = $_POST["tea_charid"];
 			$userid = $_POST["tea_userid"];
@@ -107,7 +107,7 @@ class TEA_TS extends TEAC
 					$alliance = $char['allianceid'];
 				}
 			}
-		}
+		}*/
 		$groups2 = $this -> tea -> MemberGroups(TRUE);
 		$groups[-1] = '-';
 		foreach($groups2 as $i => $g)

@@ -37,6 +37,7 @@ $txt['tea_groupass_alliance'] = 'Group for Alliance Members';
 $txt['tea_groupass_blue'] = 'Group for Blues';
 $txt['tea_groupass_neut'] = 'Group for Neutrals';
 $txt['tea_groupass_unknown'] = 'Group for Unknown Status';
+$txt['tea_groupass_restricted'] = 'Group for restricted Users';
 $txt['tea_custom_name'] = 'Enable Custom Name';
 $txt['tea_nf'] = 'Name Format (use #at# #ct# for alliance/corp tags and #name# for char name)';
 $txt['tea_custom_title'] = 'Enable Custom Title';
@@ -100,6 +101,7 @@ $txt['tea_jabber_method_online'] = 'Allow Online Method';
 $txt['tea_jabber_method_create'] = 'Allow jabber UniqueID Method (Requires jabber to run as MySQL)';
 $txt['tea_jabber_admin_url'] = 'URL to Admin Page for Openfire eg. http://localhost:9090';
 $txt['tea_jabber_secret'] = 'Secret Passcode to Access User Service';
+$txt['tea_jabber_restricted'] = 'Group to deny access to Jabber';
 
 
 //TS Profile

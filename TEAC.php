@@ -214,7 +214,7 @@ class TEAC
 		}
 		elseif (($xml) && (gettype($xml) == 'integer'))
 		{
-			echo "API call error while fetching corp info: \nError Code = $xml for key id = $keyid\n";
+			echo "API call error while fetching corp info: \nError Code = $xml for corpid = $corp\n";
 			Return $xml;
 		}
 		else
@@ -323,7 +323,7 @@ class TEAC
 				$charinfo['charid']=(string)$char['characterID'];
 				
 				$corpinfo = $this -> corp_info((string)$char['corporationID']); // corpname, ticker, allianceid, alliance, aticker
-				if ($corpinfo == 9999)
+				if (gettype($corpinfo) == 'integer')
 				{
 					return 9999;
 				}
@@ -364,31 +364,6 @@ class TEAC
 				$skills[strtolower($name)] = $level;
 			}
 			
-			if(!empty($xml -> result -> rowset[0]))
-			{
-				//$this -> query("DELETE FROM {db_prefix}tea_character_skills WHERE charid = ". mysql_real_escape_string($charid) . " AND skill_id = 0"); 
-				//$this -> query("DELETE FROM {db_prefix}tea_character_skills WHERE charid = ". mysql_real_escape_string($charid) ); 
-				
-				foreach($xml -> result -> rowset[0] as $skill)
-				{
-					//echo "<pre>";var_dump($skill["typeID"]); echo '<hr>';
-					$skills[strtolower($skilllist[(string)$skill["typeID"]])] = (string)$skill["level"];
-					if ($xml -> result -> allianceID == 150097440)
-					{
-						$s = (string)$skill["typeID"];
-						$l = (string)$skill["level"];
-						$sp += (int)$skill["skillpoints"];
-						//var_dump($s);
-						//var_dump($l);
-						//echo "<br>";
-						$this -> query("REPLACE INTO {db_prefix}tea_character_skills (userid,charid,skill_id,level) VALUES ('".mysql_real_escape_string($keyid). "', '" . mysql_real_escape_string($charid). "', '" . mysql_real_escape_string($s). "', '" . mysql_real_escape_string($l). "')");
-					}
-				}
-				if ($xml -> result -> allianceID == 150097440)
-				{
-					$this -> query("REPLACE INTO {db_prefix}tea_character_skills (userid,charid,skill_id,level) VALUES ('".mysql_real_escape_string($keyid). "', '" . mysql_real_escape_string($charid). "', '0', '" . mysql_real_escape_string($sp). "')");
-				}
-			}
 			return $skills;
 		}
 		elseif (($xml) && (gettype($xml) == 'integer'))
@@ -403,11 +378,11 @@ class TEAC
 		}
 	}
 	
-	function roles($id, $api, $charid)
+	function roles($keyid, $vcode, $charid)
 	{
 		$roles = NULL;
 		$post = array();
-		$post = array('keyID' => $id, 'vCode' => $api, 'characterID' => $charid);
+		$post = array('keyID' => $keyid, 'vCode' => $vcode, 'characterID' => $charid);
 
 		//echo "getting Roles\n";
 		$xml = $this -> get_xml('charsheet', $post);
@@ -440,11 +415,11 @@ class TEAC
 		}
 	}
 
-	function titles($id, $api, $charid)
+	function titles($keyid, $vcode, $charid)
 	{
 		$titles='';
 		$post = array();
-		$post = array('keyID' => $id, 'vCode' => $api, 'characterID' => $charid);
+		$post = array('keyID' => $keyid, 'vCode' => $vcode, 'characterID' => $charid);
 
 		$xml = $this -> get_xml('charsheet', $post);
 		
@@ -481,10 +456,10 @@ class TEAC
 		
 	}
 
-	function militia($id, $api, $charid)
+	function militia($keyid, $vcode, $charid)
 	{
 		$post = array();
-		$post = array('keyID' => $id, 'vCode' => $api, 'characterID' => $charid);
+		$post = array('keyID' => $keyid, 'vCode' => $vcode, 'characterID' => $charid);
 	
 		$xml = $this -> get_xml('facwar', $post);
 		
