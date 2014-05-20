@@ -3292,7 +3292,7 @@ function postFileReady()
 		if ( !empty($_POST['tea_user_id']) || !empty($_POST['tea_user_api']) || $this -> modSettings['tea_regreq'] )
 		{
 			$chars = $this -> get_characters_reg_check($_POST['tea_user_id'], $_POST['tea_user_api']);
-			if ((empty($chars)) || ($chars == 9998)) // invalid api
+			if ((empty($chars)) || (gettype($chars) == 'integer')) // invalid api
 			{
 				$ret = $this -> txt['tea_regreq_error'];
 				if(empty($ret))
