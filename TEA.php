@@ -587,7 +587,13 @@ class TEA extends TEAC
 					{
 						$error = TRUE;
 						//$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = 9999, error = 'Api Fault', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
-						return $chars;
+						continue;
+					}
+					elseif ($chars == 9998)
+					{
+						$error = TRUE;
+						//$this -> query("UPDATE {db_prefix}tea_api SET status = 'API Error', errorid = 9999, error = 'Api Faul                                                        t', status_change = ".time()." WHERE ID_MEMBER = ".$id." AND userid = ".$apiuser);
+						continue;
 					}
 					elseif (gettype($chars) == 'integer')
 					{

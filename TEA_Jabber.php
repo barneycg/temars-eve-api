@@ -986,7 +986,7 @@ function template_edit_tea_jabber()
 				}
 				echo '</select>';
 			}
-			echo '</td></tr><tr><td>Password: <input type="password" name="tea_jabber_pw" value=""></td></tr>';
+			echo '</td></tr><tr><td>Password: <input type="password" name="tea_jabber_pw" value=""></td><td><font color=red>Please Note this password is sent to the Openfire server as plain text and Openfire itself does not store it using a one way hash - ie this is not secure so don\'t use your bank account password you muppet</font></td></tr>';
 		//	if(isset($modSettings["tea_jabber_method_create"]) && $modSettings["tea_jabber_method_create"])
 		//	{
 		//		if(count($count) != 1)

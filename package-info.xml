@@ -64,5 +64,6 @@
 		<remove-file name="$boarddir/esam_upgrade.php" />
 		<remove-dir name="$boarddir/TEA" />
 		<remove-dir name="$sourcedir/TS3_Class" />
+		<code>del_schedule.php</code>
 	</uninstall>
 </package-info>
