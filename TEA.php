@@ -23,7 +23,7 @@ class TEA extends TEAC
 		$this -> smcFunc = &$smcFunc;
 		$this -> settings = &$settings;
 
-		$this -> version = "1.3.1 r6";
+		$this -> version = "1.3.1 r7";
 
 		$permissions["tea_view_own"] = 1;
 		$permissions["tea_view_any"] = 0;
@@ -3781,8 +3781,8 @@ function template_edittea()
 			$charlist = array();
 			foreach($teainfo as $info)
 			{
-				if (!empty($info['ali_charnames'])) {
-					foreach($info['ali_charnames'] as $i => $char)
+				if (!empty($info['charnames'])) {
+					foreach($info['charnames'] as $i => $char)
 						$charlist[$i] = $char[0];
 				}			
 			}
